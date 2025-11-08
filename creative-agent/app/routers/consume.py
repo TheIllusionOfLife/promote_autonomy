@@ -2,6 +2,7 @@
 
 import base64
 import json
+import secrets
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Header
@@ -45,9 +46,9 @@ async def consume_task(
     It validates the secret token, decodes the message,
     generates all requested assets, and updates Firestore.
     """
-    # Verify secret token
+    # Verify secret token (constant-time comparison)
     expected_token = f"Bearer {settings.PUBSUB_SECRET_TOKEN}"
-    if authorization != expected_token:
+    if not (authorization and secrets.compare_digest(authorization, expected_token)):
         raise HTTPException(status_code=401, detail="Invalid authorization token")
 
     # Decode message data
