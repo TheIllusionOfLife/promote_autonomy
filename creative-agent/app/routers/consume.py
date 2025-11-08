@@ -1,7 +1,9 @@
 """Pub/Sub consumer endpoint for Creative Agent."""
 
+import asyncio
 import base64
 import json
+import logging
 import secrets
 from typing import Any
 
@@ -17,6 +19,7 @@ from app.services.video import get_video_service
 from app.services.firestore import get_firestore_service
 from app.services.storage import get_storage_service
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
 
@@ -83,49 +86,68 @@ async def consume_task(
             detail=f"Job {event_id} has invalid status: {job.status}",
         )
 
-    captions_url = None
-    image_url = None
-    video_url = None
-
     try:
-        # Generate captions if requested
-        if task_list.captions:
-            captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
+        # Define async functions for each asset type
+        async def generate_captions_task():
+            """Generate and upload captions."""
+            if not task_list.captions:
+                return None
 
-            # Upload captions as JSON
+            logger.info(f"Generating captions for job {event_id}")
+            captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
             captions_json = json.dumps(captions, indent=2).encode("utf-8")
-            captions_url = await storage_service.upload_file(
+            url = await storage_service.upload_file(
                 event_id=event_id,
                 filename="captions.json",
                 content=captions_json,
                 content_type="application/json",
             )
+            logger.info(f"Captions generated for job {event_id}")
+            return url
 
-        # Generate image if requested
-        if task_list.image:
+        async def generate_image_task():
+            """Generate and upload image."""
+            if not task_list.image:
+                return None
+
+            logger.info(f"Generating image for job {event_id}")
             image_bytes = await image_service.generate_image(task_list.image)
-
-            image_url = await storage_service.upload_file(
+            url = await storage_service.upload_file(
                 event_id=event_id,
                 filename="image.png",
                 content=image_bytes,
                 content_type="image/png",
             )
+            logger.info(f"Image generated for job {event_id}")
+            return url
 
-        # Generate video brief if requested
-        if task_list.video:
+        async def generate_video_task():
+            """Generate and upload video brief."""
+            if not task_list.video:
+                return None
+
+            logger.info(f"Generating video brief for job {event_id}")
             video_brief = await video_service.generate_video_brief(task_list.video)
-
-            # Upload brief as text file
             brief_bytes = video_brief.encode("utf-8")
-            video_url = await storage_service.upload_file(
+            url = await storage_service.upload_file(
                 event_id=event_id,
                 filename="video_brief.txt",
                 content=brief_bytes,
                 content_type="text/plain",
             )
+            logger.info(f"Video brief generated for job {event_id}")
+            return url
 
-        # Update job to completed with asset URLs
+        # Generate all assets in parallel (2-3x faster)
+        logger.info(f"Starting parallel asset generation for job {event_id}")
+        captions_url, image_url, video_url = await asyncio.gather(
+            generate_captions_task(),
+            generate_image_task(),
+            generate_video_task(),
+        )
+        logger.info(f"All assets generated for job {event_id}")
+
+        # Mark job as completed with all asset URLs
         await firestore_service.update_job_status(
             event_id=event_id,
             status=JobStatus.COMPLETED,
@@ -133,6 +155,7 @@ async def consume_task(
             image_url=image_url,
             video_url=video_url,
         )
+        logger.info(f"Job {event_id} completed successfully")
 
         # Build response outputs
         outputs = {}
@@ -146,9 +169,22 @@ async def consume_task(
         return {"status": "success", "event_id": event_id, "outputs": outputs}
 
     except Exception as e:
+        # Log error with full traceback
+        logger.error(
+            f"Asset generation failed for job {event_id}: {e}",
+            exc_info=True
+        )
+
         # Mark job as failed
         await firestore_service.update_job_status(
             event_id=event_id,
             status=JobStatus.FAILED,
         )
-        raise HTTPException(status_code=500, detail=f"Asset generation failed: {e}")
+
+        # Return 200 to acknowledge message (prevent Pub/Sub retries)
+        # The job is already marked as FAILED in Firestore
+        return {
+            "status": "failed",
+            "event_id": event_id,
+            "error": str(e)
+        }
