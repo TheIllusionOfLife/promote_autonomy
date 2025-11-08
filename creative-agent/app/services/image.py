@@ -1,0 +1,170 @@
+"""Image generation service."""
+
+from typing import Protocol
+from io import BytesIO
+
+from PIL import Image, ImageDraw, ImageFont
+from promote_autonomy_shared.schemas import ImageTaskConfig
+
+from app.core.config import get_settings
+
+
+
+class ImageService(Protocol):
+    """Protocol for image generation services."""
+
+    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+        """Generate image from prompt.
+
+        Args:
+            config: Image generation configuration
+
+        Returns:
+            Image bytes (PNG format)
+        """
+        ...
+
+
+class MockImageService:
+    """Mock image generation for testing."""
+
+    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+        """Generate placeholder image with text overlay."""
+        # Parse size (e.g., "1024x1024")
+        width, height = map(int, config.size.split("x"))
+
+        # Create image with solid color background
+        img = Image.new("RGB", (width, height), color=(100, 149, 237))  # Cornflower blue
+
+        # Add text overlay
+        draw = ImageDraw.Draw(img)
+
+        # Try to use a nice font, fall back to default if unavailable
+        try:
+            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=40)
+        except:
+            font = ImageFont.load_default()
+
+        # Wrap prompt text
+        prompt_text = config.prompt[:100] + "..." if len(config.prompt) > 100 else config.prompt
+        lines = []
+        words = prompt_text.split()
+        current_line = []
+
+        for word in words:
+            current_line.append(word)
+            test_line = " ".join(current_line)
+            bbox = draw.textbbox((0, 0), test_line, font=font)
+            if bbox[2] - bbox[0] > width - 40:
+                current_line.pop()
+                lines.append(" ".join(current_line))
+                current_line = [word]
+
+        if current_line:
+            lines.append(" ".join(current_line))
+
+        # Center text vertically
+        line_height = 50
+        total_height = len(lines) * line_height
+        y = (height - total_height) // 2
+
+        for line in lines:
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_width = bbox[2] - bbox[0]
+            x = (width - text_width) // 2
+            draw.text((x, y), line, fill="white", font=font)
+            y += line_height
+
+        # Add "MOCK IMAGE" watermark
+        try:
+            watermark_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=20)
+        except:
+            watermark_font = font
+
+        watermark = "MOCK IMAGE"
+        bbox = draw.textbbox((0, 0), watermark, font=watermark_font)
+        text_width = bbox[2] - bbox[0]
+        draw.text(
+            ((width - text_width) // 2, height - 40),
+            watermark,
+            fill=(255, 255, 255, 128),
+            font=watermark_font,
+        )
+
+        # Convert to bytes
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        return buffer.getvalue()
+
+
+class RealImageService:
+    """Real image generation using Vertex AI Imagen."""
+
+    def __init__(self):
+        """Initialize Vertex AI for image generation."""
+        import vertexai
+        from vertexai.preview.vision_models import ImageGenerationModel
+
+        settings = get_settings()
+        vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
+        self.model = ImageGenerationModel.from_pretrained(settings.IMAGEN_MODEL)
+
+    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+        """Generate image using Imagen."""
+        # Parse size
+        width, height = map(int, config.size.split("x"))
+
+        # Determine aspect ratio for Imagen
+        # Imagen supports: 1:1, 9:16, 16:9, 4:3, 3:4
+        aspect_ratio = width / height
+        if aspect_ratio > 1.5:
+            imagen_aspect_ratio = "16:9"
+        elif aspect_ratio < 0.7:
+            imagen_aspect_ratio = "9:16"
+        elif aspect_ratio > 1.2:
+            imagen_aspect_ratio = "4:3"
+        elif aspect_ratio < 0.85:
+            imagen_aspect_ratio = "3:4"
+        else:
+            imagen_aspect_ratio = "1:1"
+
+        # Generate image
+        response = self.model.generate_images(
+            prompt=config.prompt,
+            number_of_images=1,
+            aspect_ratio=imagen_aspect_ratio,
+        )
+
+        # Get first image bytes
+        image = response.images[0]
+
+        # Resize to exact requested dimensions if needed
+        if (image.size[0], image.size[1]) != (width, height):
+            pil_image = Image.open(BytesIO(image._image_bytes))
+            pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
+            buffer = BytesIO()
+            pil_image.save(buffer, format="PNG")
+            return buffer.getvalue()
+
+        return image._image_bytes
+
+
+# Service instance management
+_mock_image_service: MockImageService | None = None
+_real_image_service: RealImageService | None = None
+
+
+def get_image_service() -> ImageService:
+    """Get image service instance (singleton)."""
+    global _mock_image_service, _real_image_service
+
+    settings = get_settings()
+
+    if settings.USE_MOCK_IMAGEN:
+        if _mock_image_service is None:
+            _mock_image_service = MockImageService()
+        return _mock_image_service
+    else:
+        if _real_image_service is None:
+            _real_image_service = RealImageService()
+        return _real_image_service
