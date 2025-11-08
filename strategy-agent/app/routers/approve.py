@@ -107,16 +107,40 @@ async def approve(request: ApproveRequest, authorization: str = Header(None)):
             )
 
         # Publish to Pub/Sub (only after successful transaction)
+        # If publish fails, revert job to pending_approval
         pubsub_service = get_pubsub_service()
-        message_id = await pubsub_service.publish_task(
-            request.event_id,
-            job.task_list,
-        )
+        try:
+            message_id = await pubsub_service.publish_task(
+                request.event_id,
+                job.task_list,
+            )
+            logger.info(
+                f"Approved job {request.event_id}, status -> {job.status}, "
+                f"published message {message_id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to publish job {request.event_id} to Pub/Sub: {e}",
+                exc_info=True,
+            )
+            # Rollback: revert job to pending_approval
+            try:
+                await firestore_service.revert_to_pending(request.event_id)
+                logger.info(f"Reverted job {request.event_id} to pending_approval")
+            except Exception as rollback_error:
+                logger.error(
+                    f"CRITICAL: Failed to rollback job {request.event_id}: "
+                    f"{rollback_error}",
+                    exc_info=True,
+                )
 
-        logger.info(
-            f"Approved job {request.event_id}, status -> {job.status}, "
-            f"published message {message_id}"
-        )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Failed to publish job to processing queue. "
+                    "Job has been reverted to pending_approval. Please try again."
+                ),
+            )
 
         return ApproveResponse(
             event_id=request.event_id,

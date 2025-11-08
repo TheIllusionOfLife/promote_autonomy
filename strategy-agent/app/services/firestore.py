@@ -27,6 +27,10 @@ class FirestoreService(Protocol):
         """Atomically transition job from pending_approval to processing."""
         ...
 
+    async def revert_to_pending(self, event_id: str) -> None:
+        """Revert a job from processing back to pending_approval (rollback)."""
+        ...
+
 
 class MockFirestoreService:
     """Mock Firestore implementation using in-memory storage."""
@@ -85,6 +89,28 @@ class MockFirestoreService:
 
         logger.info(f"[MOCK] Approved job {event_id}, status -> processing")
         return job
+
+    async def revert_to_pending(self, event_id: str) -> None:
+        """Revert a job from processing back to pending_approval."""
+        job = self.jobs.get(event_id)
+        if not job:
+            raise ValueError(f"Job {event_id} not found")
+
+        if job.status != JobStatus.PROCESSING:
+            logger.warning(
+                f"[MOCK] Job {event_id} is not in processing status, "
+                f"cannot revert (current: {job.status})"
+            )
+            return
+
+        # Revert status
+        now = datetime.now(timezone.utc).isoformat()
+        job.status = JobStatus.PENDING_APPROVAL
+        job.approved_at = None
+        job.updated_at = now
+
+        logger.info(f"[MOCK] Reverted job {event_id} to pending_approval")
+
 
 
 class RealFirestoreService:
@@ -188,6 +214,33 @@ class RealFirestoreService:
 
         logger.info(f"Approved job {event_id} in Firestore transaction")
         return job
+
+    async def revert_to_pending(self, event_id: str) -> None:
+        """Revert a job from processing back to pending_approval."""
+        doc_ref = self.db.collection("jobs").document(event_id)
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            raise ValueError(f"Job {event_id} not found")
+
+        job = Job(**doc.to_dict())
+
+        if job.status != JobStatus.PROCESSING:
+            logger.warning(
+                f"Job {event_id} is not in processing status, "
+                f"cannot revert (current: {job.status})"
+            )
+            return
+
+        # Revert to pending_approval
+        now = datetime.now(timezone.utc).isoformat()
+        doc_ref.update({
+            "status": JobStatus.PENDING_APPROVAL,
+            "approved_at": None,
+            "updated_at": now,
+        })
+
+        logger.info(f"Reverted job {event_id} to pending_approval in Firestore")
 
 
 # Singleton instances
