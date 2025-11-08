@@ -103,7 +103,7 @@ def get_copy_service() -> CopyService:
 
     settings = get_settings()
 
-    if settings.USE_MOCK_IMAGEN:  # Use same flag as image generation
+    if settings.USE_MOCK_GEMINI:
         if _mock_copy_service is None:
             _mock_copy_service = MockCopyService()
         return _mock_copy_service

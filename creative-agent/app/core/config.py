@@ -17,11 +17,13 @@ class Settings(BaseSettings):
     # Vertex AI Configuration
     IMAGEN_MODEL: str = "imagen-3.0-generate-001"
     VEO_MODEL: str = "veo-001"
+    GEMINI_MODEL: str = "gemini-2.0-flash-exp"
 
     # Pub/Sub Configuration
     PUBSUB_SECRET_TOKEN: str
 
     # Mock Mode Flags
+    USE_MOCK_GEMINI: bool = False
     USE_MOCK_IMAGEN: bool = False
     USE_MOCK_VEO: bool = False
     USE_MOCK_FIRESTORE: bool = False
