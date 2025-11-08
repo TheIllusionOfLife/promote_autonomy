@@ -40,9 +40,20 @@ class MockImageService:
         draw = ImageDraw.Draw(img)
 
         # Try to use a nice font, fall back to default if unavailable
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=40)
-        except (OSError, IOError):
+        # Check multiple paths for cross-platform support (Linux, macOS, Windows)
+        font = None
+        for font_path in [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux (Cloud Run)
+            "/System/Library/Fonts/Helvetica.ttc",  # macOS
+            "C:\\Windows\\Fonts\\arial.ttf",  # Windows
+        ]:
+            try:
+                font = ImageFont.truetype(font_path, size=40)
+                break
+            except (OSError, IOError):
+                continue
+
+        if font is None:
             font = ImageFont.load_default()
 
         # Wrap prompt text
@@ -76,9 +87,19 @@ class MockImageService:
             y += line_height
 
         # Add "MOCK IMAGE" watermark
-        try:
-            watermark_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=20)
-        except (OSError, IOError):
+        watermark_font = None
+        for font_path in [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux (Cloud Run)
+            "/System/Library/Fonts/Helvetica.ttc",  # macOS
+            "C:\\Windows\\Fonts\\arial.ttf",  # Windows
+        ]:
+            try:
+                watermark_font = ImageFont.truetype(font_path, size=20)
+                break
+            except (OSError, IOError):
+                continue
+
+        if watermark_font is None:
             watermark_font = font
 
         watermark = "MOCK IMAGE"
