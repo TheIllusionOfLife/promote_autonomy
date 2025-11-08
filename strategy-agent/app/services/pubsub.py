@@ -1,5 +1,6 @@
 """Pub/Sub service for task distribution."""
 
+import asyncio
 import json
 import logging
 from typing import Protocol
@@ -72,7 +73,7 @@ class RealPubSubService:
 
         # Publish message
         future = self.publisher.publish(self.topic_path, message_data)
-        message_id = future.result()  # Block until published
+        message_id = await asyncio.to_thread(future.result)
 
         logger.info(
             f"Published task for job {event_id} to {self.topic_path}, "
