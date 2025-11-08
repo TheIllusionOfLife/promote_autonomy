@@ -54,7 +54,8 @@ async def strategize(request: StrategizeRequest):
 
         return StrategizeResponse(
             event_id=event_id,
-            status=JobStatus.PENDING_APPROVAL,
+            status=job.status,
+            task_list=task_list,
             message="Strategy generated successfully. Please review and approve.",
         )
 

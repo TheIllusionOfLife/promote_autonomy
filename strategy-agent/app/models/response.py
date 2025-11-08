@@ -1,7 +1,7 @@
 """API response models."""
 
 from pydantic import BaseModel, Field
-from promote_autonomy_shared.schemas import Job, JobStatus
+from promote_autonomy_shared.schemas import Job, JobStatus, TaskList
 
 
 class StrategizeResponse(BaseModel):
@@ -9,6 +9,7 @@ class StrategizeResponse(BaseModel):
 
     event_id: str = Field(description="Created job event ID")
     status: JobStatus = Field(description="Job status (pending_approval)")
+    task_list: TaskList = Field(description="The generated task list for approval")
     message: str = Field(description="Human-readable message")
 
 
