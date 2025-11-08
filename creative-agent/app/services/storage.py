@@ -1,5 +1,6 @@
 """Cloud Storage service for asset uploads."""
 
+import datetime
 from typing import Protocol
 
 from app.core.config import get_settings
@@ -64,10 +65,13 @@ class RealStorageService:
         # Upload with content type
         blob.upload_from_string(content, content_type=content_type)
 
-        # Make publicly accessible
-        blob.make_public()
+        # Generate signed URL (1 hour expiration)
+        signed_url = blob.generate_signed_url(
+            expiration=datetime.timedelta(hours=1),
+            method="GET",
+        )
 
-        return blob.public_url
+        return signed_url
 
 
 # Service instance management
