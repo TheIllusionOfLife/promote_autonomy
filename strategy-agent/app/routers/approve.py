@@ -124,9 +124,11 @@ async def approve(request: ApproveRequest, authorization: str = Header(None)):
                 exc_info=True,
             )
             # Rollback: revert job to pending_approval
+            rollback_succeeded = False
             try:
                 await firestore_service.revert_to_pending(request.event_id)
                 logger.info(f"Reverted job {request.event_id} to pending_approval")
+                rollback_succeeded = True
             except Exception as rollback_error:
                 logger.error(
                     f"CRITICAL: Failed to rollback job {request.event_id}: "
@@ -134,12 +136,21 @@ async def approve(request: ApproveRequest, authorization: str = Header(None)):
                     exc_info=True,
                 )
 
-            raise HTTPException(
-                status_code=500,
-                detail=(
+            if rollback_succeeded:
+                detail_msg = (
                     "Failed to publish job to processing queue. "
                     "Job has been reverted to pending_approval. Please try again."
-                ),
+                )
+            else:
+                detail_msg = (
+                    "CRITICAL: Failed to publish job AND failed to rollback. "
+                    f"Job {request.event_id} is stuck in PROCESSING state. "
+                    "Contact system administrator for manual intervention."
+                )
+
+            raise HTTPException(
+                status_code=500,
+                detail=detail_msg,
             )
 
         return ApproveResponse(
