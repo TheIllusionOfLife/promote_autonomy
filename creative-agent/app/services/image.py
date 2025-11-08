@@ -135,18 +135,26 @@ class RealImageService:
             aspect_ratio=imagen_aspect_ratio,
         )
 
-        # Get first image bytes
-        image = response.images[0]
+        # Check if response has images
+        if not response.images:
+            raise RuntimeError("Vertex AI Imagen returned no images")
+
+        # Get first image using public API
+        vertex_image = response.images[0]
+        image_bytes = vertex_image.image_bytes  # Use public property, not private _image_bytes
+
+        # Load image to check actual size
+        pil_image = Image.open(BytesIO(image_bytes))
+        pil_image.load()
 
         # Resize to exact requested dimensions if needed
-        if (image.size[0], image.size[1]) != (width, height):
-            pil_image = Image.open(BytesIO(image._image_bytes))
+        if pil_image.size != (width, height):
             pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
             buffer = BytesIO()
             pil_image.save(buffer, format="PNG")
             return buffer.getvalue()
 
-        return image._image_bytes
+        return image_bytes
 
 
 # Service instance management
