@@ -72,7 +72,7 @@ class TestStrategizeEndpoint:
 class TestApproveEndpoint:
     """Tests for /approve endpoint."""
 
-    def test_approve_workflow(self, test_client, mock_user_id, sample_goal):
+    def test_approve_workflow(self, test_client, mock_user_id, sample_goal, auth_headers):
         """Test complete approve workflow."""
         # First create a job
         create_response = test_client.post(
@@ -82,10 +82,11 @@ class TestApproveEndpoint:
         assert create_response.status_code == 200
         event_id = create_response.json()["event_id"]
 
-        # Then approve it
+        # Then approve it with authorization header
         approve_response = test_client.post(
             "/api/approve",
             json={"event_id": event_id, "uid": mock_user_id},
+            headers=auth_headers,
         )
         assert approve_response.status_code == 200
         data = approve_response.json()
@@ -93,16 +94,17 @@ class TestApproveEndpoint:
         assert data["status"] == JobStatus.PROCESSING
         assert data["published"] is True
 
-    def test_approve_nonexistent_job(self, test_client, mock_user_id):
+    def test_approve_nonexistent_job(self, test_client, mock_user_id, auth_headers):
         """Test approving non-existent job returns 404."""
         response = test_client.post(
             "/api/approve",
             json={"event_id": "nonexistent_id", "uid": mock_user_id},
+            headers=auth_headers,
         )
         assert response.status_code == 404
 
     def test_approve_already_approved_job(
-        self, test_client, mock_user_id, sample_goal
+        self, test_client, mock_user_id, sample_goal, auth_headers
     ):
         """Test approving already approved job returns 409."""
         # Create and approve a job
@@ -115,16 +117,18 @@ class TestApproveEndpoint:
         test_client.post(
             "/api/approve",
             json={"event_id": event_id, "uid": mock_user_id},
+            headers=auth_headers,
         )
 
         # Try to approve again
         second_approve = test_client.post(
             "/api/approve",
             json={"event_id": event_id, "uid": mock_user_id},
+            headers=auth_headers,
         )
         assert second_approve.status_code == 409
 
-    def test_approve_wrong_user(self, test_client, mock_user_id, sample_goal):
+    def test_approve_wrong_user(self, test_client, mock_user_id, sample_goal, auth_headers):
         """Test approving job by different user returns 403."""
         # Create job with one user
         create_response = test_client.post(
@@ -134,9 +138,11 @@ class TestApproveEndpoint:
         event_id = create_response.json()["event_id"]
 
         # Try to approve with different user
+        # Use different user in request but original user's token - should trigger UID mismatch
         approve_response = test_client.post(
             "/api/approve",
             json={"event_id": event_id, "uid": "different_user"},
+            headers=auth_headers,  # Still using mock_user_id token
         )
         assert approve_response.status_code == 403
 

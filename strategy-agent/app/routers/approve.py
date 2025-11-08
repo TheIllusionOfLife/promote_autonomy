@@ -2,7 +2,8 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
+from firebase_admin import auth
 from promote_autonomy_shared.schemas import JobStatus
 
 from app.models.request import ApproveRequest
@@ -18,34 +19,64 @@ router = APIRouter()
     "/approve",
     response_model=ApproveResponse,
     responses={
-        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
     },
 )
-async def approve(request: ApproveRequest):
+async def approve(request: ApproveRequest, authorization: str = Header(None)):
     """
     Approve a pending job and trigger asset generation.
 
     This endpoint implements the critical HITL workflow:
-    1. Verifies user owns the job
-    2. Uses Firestore transaction to atomically transition
+    1. Verifies Firebase ID token from Authorization header
+    2. Verifies user owns the job
+    3. Uses Firestore transaction to atomically transition
        pending_approval → processing
-    3. Publishes task to Pub/Sub for Creative Agent
-    4. Returns success confirmation
+    4. Publishes task to Pub/Sub for Creative Agent
+    5. Returns success confirmation
 
     Error cases:
-    - 403: User does not own the job
+    - 401: Missing or invalid Firebase ID token
+    - 403: User does not own the job or UID mismatch
     - 404: Job not found
     - 409: Job not in pending_approval status (already processed)
     - 500: Transaction or publish failed
     """
     try:
+        # Verify Firebase ID token
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=401,
+                detail="Missing or invalid authorization header",
+            )
+
+        id_token = authorization.split("Bearer ")[1]
+        try:
+            decoded_token = auth.verify_id_token(id_token)
+            token_uid = decoded_token["uid"]
+        except Exception as e:
+            logger.warning(f"Invalid Firebase ID token: {e}")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Firebase ID token",
+            )
+
+        # Verify UID from token matches UID in request
+        if token_uid != request.uid:
+            logger.warning(
+                f"UID mismatch: token={token_uid}, request={request.uid}"
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="UID mismatch between token and request",
+            )
+
         logger.info(
-            f"Processing approval request for job {request.event_id} "
-            f"by user {request.uid}"
+            f"Verified Firebase token for user {token_uid}, "
+            f"processing approval for job {request.event_id}"
         )
 
         firestore_service = get_firestore_service()

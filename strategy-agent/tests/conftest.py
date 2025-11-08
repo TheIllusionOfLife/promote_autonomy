@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures."""
 
 import os
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -45,3 +46,26 @@ def sample_goal():
 def sample_event_id():
     """Sample event ID for testing."""
     return "01JD4S3ABCTEST123"
+
+
+@pytest.fixture(autouse=True)
+def mock_firebase_auth():
+    """Mock Firebase auth.verify_id_token for all tests."""
+    with patch("firebase_admin.auth.verify_id_token") as mock_verify:
+        # Return decoded token with uid matching the request
+        def verify_side_effect(token):
+            # Extract uid from token (format: "Bearer test_user_123")
+            if token.startswith("test_"):
+                uid = token
+            else:
+                uid = "test_user_123"  # Default for tests
+            return {"uid": uid}
+
+        mock_verify.side_effect = verify_side_effect
+        yield mock_verify
+
+
+@pytest.fixture
+def auth_headers(mock_user_id):
+    """Generate authorization headers for testing."""
+    return {"Authorization": f"Bearer {mock_user_id}"}
