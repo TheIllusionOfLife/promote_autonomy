@@ -40,7 +40,7 @@ A maintainer will review and provide feedback.
 
 ## Coding Standards
 ### Python (Strategy & Creative Agents)
-- Use `black` or `ruff` for formatting
+- Use `ruff` for linting and `black` for formatting
 - Follow Pydantic models for structured data
 - Keep functions pure when possible
 

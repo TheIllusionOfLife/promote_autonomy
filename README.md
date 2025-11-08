@@ -24,18 +24,22 @@ This repository contains all services and infrastructure required to run the Pro
 ## Architecture Overview
 Promote Autonomy consists of three core services:
 
-```
-Frontend (Next.js, Cloud Run)
-│   └─ Login → Goal input → Approval UI → Dashboard
-│
-Strategy Agent (FastAPI, Cloud Run)
-│   ├─ /strategize → Generate task list
-│   ├─ /approve → HITL approval + Pub/Sub publish
-│   └─ Firestore writes (pending_approval → processing)
-│
-Creative Agent (FastAPI, Cloud Run)
-    └─ Pub/Sub → Asset generation → Storage upload → Firestore update
-```
+**Frontend (Next.js, Cloud Run)**
+- Provides login, goal input, and approval UI
+- Displays real-time job status from Firestore
+- Renders final asset dashboard
+
+**Strategy Agent (FastAPI, Cloud Run)**
+- Generates task lists via `/strategize` endpoint
+- Handles HITL approval via `/approve` endpoint
+- Publishes approved tasks to Pub/Sub
+- Manages Firestore state transitions (pending_approval → processing)
+
+**Creative Agent (FastAPI, Cloud Run)**
+- Consumes Pub/Sub messages to generate assets
+- Generates copy using Gemini, images using Imagen
+- Uploads assets to Cloud Storage
+- Updates Firestore with completion status
 
 Additional components:
 - Firebase Authentication
@@ -84,12 +88,12 @@ gcloud run deploy promote-strategy \
   --no-allow-unauthenticated
 ```
 
-Configure push subscriptions:
+Configure push subscriptions with OIDC authentication:
 ```bash
 gcloud pubsub subscriptions create autonomy-tasks-sub \
   --topic=autonomy-tasks \
   --push-endpoint="https://creative-agent-xyz.run.app/pubsub" \
-  --push-auth-token="your-secret"
+  --push-auth-service-account=INVOKER_SERVICE_ACCOUNT_EMAIL
 ```
 
 ---
@@ -97,5 +101,5 @@ gcloud pubsub subscriptions create autonomy-tasks-sub \
 ## Security
 - Firestore rules enforce **read-only for clients**.
 - All state mutations are handled server-side.
-- Pub/Sub push requests require shared verification token.
+- Pub/Sub push requests use OIDC token authentication.
 - Service accounts follow least-privilege principle.

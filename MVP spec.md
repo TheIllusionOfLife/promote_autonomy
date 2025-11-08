@@ -42,13 +42,17 @@ Promote Autonomy consists of three Cloud Run services, Firebase Authentication, 
 Central job state management:
 ```
 /jobs/{event_id}
-  uid
-  task_list
-  status: pending_approval | approved | processing | completed | failed | rejected
-  approved_at
-  createdAt / updatedAt
-  captions[] / images[] / videos[] / posts{}
-  audit_logs[] (optional)
+  uid                  # User ID from Firebase Auth
+  task_list            # Task list object (see section 4)
+  status               # pending_approval | processing | completed | failed | rejected
+  approved_at          # Timestamp of approval
+  createdAt            # Document creation timestamp
+  updatedAt            # Last update timestamp
+  captions[]           # Generated caption strings
+  images[]             # Image URLs in Cloud Storage
+  videos[]             # Video URLs in Cloud Storage
+  posts{}              # Social media post drafts
+  audit_logs[]         # Optional approval audit trail
 ```
 Client can **read only**. All state mutations are server-side.
 
@@ -128,16 +132,9 @@ Client can **read only**. All state mutations are server-side.
 - Update Firestore with `completed`
 
 ### STEP 5. Firestore & Storage Model
-**Firestore**
-```
-/jobs/{event_id}
-  task_list
-  status
-  approved_at
-  outputs{}
-  audit_logs[]
-```
-**Storage**
+See section 2.5 for the complete Firestore schema definition.
+
+**Storage Structure**
 ```
 /event_id/image.png
 /event_id/video.mp4
@@ -180,4 +177,3 @@ Promote Autonomy is now a complete HITL-enabled, production-realistic multi-agen
 ### ✅ Hackathon-ready clarity and polish
 
 With this specification, you can confidently begin implementing the system in GitHub.
-

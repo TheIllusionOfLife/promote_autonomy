@@ -46,7 +46,7 @@ pending_approval → (user approves) → processing → (assets generated) → c
 
 - **Firestore Rules**: Clients can read `/jobs/{event_id}` only if `uid` matches authenticated user. All writes require server-side service account.
 - **API Authentication**: Strategy Agent `/approve` endpoint MUST verify Firebase ID Token before state transitions.
-- **Pub/Sub Verification**: Creative Agent MUST validate shared secret token in push requests.
+- **Pub/Sub Verification**: Creative Agent MUST validate OIDC token in push requests from Pub/Sub.
 
 ### Idempotency Requirements
 

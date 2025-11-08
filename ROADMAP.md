@@ -3,7 +3,7 @@ This roadmap focuses on delivering a stable, scalable, and user-friendly HITL-ba
 
 ---
 
-## ✅ Milestone 1 — Core MVP (Weeks 1–2)
+## Milestone 1 — Core MVP (Weeks 1–2)
 **Goal:** Deliver a fully functional HITL-enabled prototype.
 
 ### Deliverables
@@ -20,7 +20,7 @@ This roadmap focuses on delivering a stable, scalable, and user-friendly HITL-ba
 
 ---
 
-## ✅ Milestone 2 — Production Stability (Weeks 3–5)
+## Milestone 2 — Production Stability (Weeks 3–5)
 **Goal:** Improve robustness, reliability, and developer experience.
 
 ### Deliverables
@@ -37,7 +37,7 @@ This roadmap focuses on delivering a stable, scalable, and user-friendly HITL-ba
 
 ---
 
-## ✅ Milestone 3 — Enhanced AI Generation (Weeks 5–7)
+## Milestone 3 — Enhanced AI Generation (Weeks 5–7)
 **Goal:** Increase quality and customization of generated marketing output.
 
 ### Deliverables
@@ -52,7 +52,7 @@ This roadmap focuses on delivering a stable, scalable, and user-friendly HITL-ba
 
 ---
 
-## ✅ Milestone 4 — Collaboration & Team Features (Weeks 7–10)
+## Milestone 4 — Collaboration & Team Features (Weeks 7–10)
 **Goal:** Enable multi-user business workflows.
 
 ### Deliverables
@@ -67,7 +67,7 @@ This roadmap focuses on delivering a stable, scalable, and user-friendly HITL-ba
 
 ---
 
-## ✅ Milestone 5 — Intelligent Feedback Loop (Weeks 10–14)
+## Milestone 5 — Intelligent Feedback Loop (Weeks 10–14)
 **Goal:** Add performance-aware iteration.
 
 ### Deliverables
