@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Server Configuration
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",

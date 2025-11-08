@@ -69,6 +69,8 @@ Thumbs.db
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+**/service-account-key.json
+service-account-key.json
 
 # Build artifacts
 *.pyc

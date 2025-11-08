@@ -15,9 +15,10 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Use FRONTEND_URL from environment for production security
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=[settings.FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
