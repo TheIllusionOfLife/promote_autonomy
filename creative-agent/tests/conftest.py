@@ -12,6 +12,7 @@ def setup_test_env():
     os.environ["LOCATION"] = "asia-northeast1"
     os.environ["STORAGE_BUCKET"] = "test-bucket"
     os.environ["PUBSUB_SECRET_TOKEN"] = "test-secret-token"
+    os.environ["USE_MOCK_GEMINI"] = "true"
     os.environ["USE_MOCK_IMAGEN"] = "true"
     os.environ["USE_MOCK_VEO"] = "true"
     os.environ["USE_MOCK_FIRESTORE"] = "true"
