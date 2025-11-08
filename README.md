@@ -1,105 +1,295 @@
 # Promote Autonomy
-AI-assisted marketing workflow with Human-in-the-Loop (HITL) approval, built on Google Cloud Run, Pub/Sub, Firebase, Firestore, and Vertex AI.
 
-Promote Autonomy helps startups and creators turn high-level marketing goals into actionable promotional assets. The system uses:
-- **AI strategy generation** (Gemini)
-- **User approval gates** (HITL)
-- **Async asset generation** (copy, images, optional video)
-- **Multi-agent architecture** powered by Cloud Run and Pub/Sub
+AI-powered marketing automation system with Human-in-the-Loop (HITL) approval for the Cloud Run Hackathon (AI Agents Track).
 
-This repository contains all services and infrastructure required to run the Promote Autonomy MVP.
+## Overview
 
----
+Promote Autonomy is a multi-agent system that generates marketing strategies and assets using AI, requiring explicit human approval before execution. Built with three independent Cloud Run services communicating via Pub/Sub and sharing state through Firestore.
 
-## Features
-- AI-generated marketing strategy
-- Human approval workflow before execution
-- Multi-agent execution pipeline
-- Automated generation of copy, images, and optional video
-- Real-time Firestore updates for job progress
-- Cloud Run–first design with scalable async processing
+## Architecture
 
----
+### Three-Service Design
 
-## Architecture Overview
-Promote Autonomy consists of three core services:
-
-**Frontend (Next.js, Cloud Run)**
-- Provides login, goal input, and approval UI
-- Displays real-time job status from Firestore
-- Renders final asset dashboard
-
-**Strategy Agent (FastAPI, Cloud Run)**
-- Generates task lists via `/strategize` endpoint
-- Handles HITL approval via `/approve` endpoint
-- Publishes approved tasks to Pub/Sub
-- Manages Firestore state transitions (pending_approval → processing)
-
-**Creative Agent (FastAPI, Cloud Run)**
-- Consumes Pub/Sub messages to generate assets
-- Generates copy using Gemini, images using Imagen
-- Uploads assets to Cloud Storage
-- Updates Firestore with completion status
-
-Additional components:
-- Firebase Authentication
-- Firestore (job state + metadata)
-- Cloud Storage (binary assets)
-- Pub/Sub topics for async execution
-
----
-
-## Repository Structure
 ```
-/ frontend              # Next.js UI
-/ strategy-agent        # Strategy generation + approval API
-/ creative-agent        # Pub/Sub consumer for asset generation
-/ infra                 # Infra as code (optional)
-/ docs                  # Specification + diagrams
+┌─────────────┐       ┌──────────────────┐       ┌────────────────┐
+│   Frontend  │──────▶│ Strategy Agent   │──────▶│ Creative Agent │
+│  (Next.js)  │       │   (FastAPI)      │       │   (FastAPI)    │
+└─────────────┘       └──────────────────┘       └────────────────┘
+      │                       │                          │
+      │                       │                          │
+      └───────────────────────┴──────────────────────────┘
+                              │
+                        ┌─────▼─────┐
+                        │ Firestore │
+                        └───────────┘
 ```
 
----
+**Frontend**: Client-side Firebase app with read-only Firestore access
+**Strategy Agent**: Generates task lists via Gemini, handles approval workflow
+**Creative Agent**: Pub/Sub consumer generating assets (copy, images, videos)
 
-## Getting Started
+### HITL Workflow
+
+1. **User Input** → Strategy Agent generates plan → `pending_approval`
+2. **Frontend** displays plan → User reviews
+3. **User Approval** → Strategy Agent validates → Firestore transaction + Pub/Sub publish
+4. **Creative Agent** receives task → Generates assets → Updates Firestore to `completed`
+
+### Critical State Machine
+
+```
+pending_approval → (approve) → processing → (assets done) → completed
+                 → (reject)  → rejected
+```
+
+Only the Strategy Agent's `/approve` endpoint can transition to `processing` (atomic operation).
+
+## Project Structure
+
+```
+promote-autonomy/
+├── shared/                 # Shared Pydantic schemas (22 tests)
+│   ├── src/promote_autonomy_shared/
+│   │   └── schemas.py     # TaskList, Job, JobStatus models
+│   └── tests/
+├── strategy-agent/         # Strategy generation service (12 tests)
+│   ├── app/
+│   │   ├── routers/       # /strategize, /approve endpoints
+│   │   ├── services/      # Gemini, Firestore, Pub/Sub
+│   │   └── core/          # Configuration
+│   └── tests/
+├── creative-agent/         # Asset generation service (24 tests)
+│   ├── app/
+│   │   ├── routers/       # /consume (Pub/Sub push)
+│   │   ├── services/      # Copy, Image, Video, Storage
+│   │   └── core/          # Configuration
+│   └── tests/
+├── frontend/               # Next.js HITL interface
+│   ├── app/               # App router pages
+│   ├── lib/               # Firebase client, API, types
+│   └── components/
+├── firestore.rules         # Security rules (read-only clients)
+├── firebase.json           # Firebase configuration
+└── .github/workflows/      # CI/CD pipeline
+    └── ci.yml             # Tests for all services
+```
+
+**Total: 58 passing tests** across all Python services.
+
+## Quick Start
+
 ### Prerequisites
-- Node.js 18+
+
 - Python 3.11+
-- Google Cloud project
-- Firebase project (Auth + Firestore)
-- Cloud SDK installed
+- Node.js 20+
+- [uv](https://github.com/astral-sh/uv) (Python package manager)
+- Google Cloud project with:
+  - Firestore enabled
+  - Pub/Sub enabled
+  - Vertex AI API enabled
+  - Service account with appropriate permissions
 
-### Clone
-```bash
-git clone https://github.com/your-org/promote-autonomy.git
-cd promote-autonomy
-```
+### Development Setup
 
----
+1. **Clone and install shared schemas**:
+   ```bash
+   cd shared
+   uv sync
+   ```
 
-## Deployment (Core Services)
-Each service can be deployed independently to Cloud Run.
+2. **Set up Strategy Agent**:
+   ```bash
+   cd strategy-agent
+   cp .env.example .env
+   # Edit .env with your Google Cloud credentials
+   uv sync
+   uv run pytest  # Run tests
+   ```
 
-Example:
+3. **Set up Creative Agent**:
+   ```bash
+   cd creative-agent
+   cp .env.example .env
+   # Edit .env with your credentials
+   uv sync
+   uv run pytest  # Run tests
+   ```
+
+4. **Set up Frontend**:
+   ```bash
+   cd frontend
+   npm install
+   cp .env.local.example .env.local
+   # Edit .env.local with Firebase config
+   ```
+
+### Running Locally
+
+Terminal 1 (Strategy Agent):
 ```bash
 cd strategy-agent
-gcloud run deploy promote-strategy \
-  --source=. \
-  --region=asia-northeast1 \
-  --no-allow-unauthenticated
+GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json \
+uv run uvicorn app.main:app --port 8000
 ```
 
-Configure push subscriptions with OIDC authentication:
+Terminal 2 (Creative Agent):
 ```bash
-gcloud pubsub subscriptions create autonomy-tasks-sub \
-  --topic=autonomy-tasks \
-  --push-endpoint="https://creative-agent-xyz.run.app/pubsub" \
-  --push-auth-service-account=INVOKER_SERVICE_ACCOUNT_EMAIL
+cd creative-agent
+GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json \
+uv run uvicorn app.main:app --port 8001
 ```
 
----
+Terminal 3 (Frontend):
+```bash
+cd frontend
+npm run dev  # Runs on http://localhost:3000
+```
+
+### Mock Mode vs Real APIs
+
+Both agents support mock mode for rapid development:
+
+**Strategy Agent** (`.env`):
+```
+USE_MOCK_GEMINI=true    # No Gemini API calls
+USE_MOCK_FIRESTORE=true # In-memory database
+USE_MOCK_PUBSUB=true    # No Pub/Sub publish
+```
+
+**Creative Agent** (`.env`):
+```
+USE_MOCK_IMAGEN=true    # Placeholder images
+USE_MOCK_VEO=true       # Text briefs only
+USE_MOCK_FIRESTORE=true # In-memory database
+USE_MOCK_STORAGE=true   # No Cloud Storage uploads
+```
+
+## Testing
+
+Run all tests:
+```bash
+# Shared schemas
+cd shared && uv run pytest -v
+
+# Strategy Agent
+cd strategy-agent && uv run pytest -v
+
+# Creative Agent
+cd creative-agent && uv run pytest -v
+```
+
+Coverage:
+```bash
+uv run pytest --cov=app --cov-report=term-missing
+```
+
+## Deployment
+
+### Deploy to Cloud Run
+
+Each service deploys independently:
+
+```bash
+# Strategy Agent
+gcloud run deploy strategy-agent \
+  --source=./strategy-agent \
+  --region=asia-northeast1 \
+  --service-account=strategy-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --set-env-vars=PROJECT_ID=xxx,PUBSUB_TOPIC=autonomy-tasks
+
+# Creative Agent
+gcloud run deploy creative-agent \
+  --source=./creative-agent \
+  --region=asia-northeast1 \
+  --service-account=creative-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --set-env-vars=PROJECT_ID=xxx,STORAGE_BUCKET=xxx \
+  --no-allow-unauthenticated
+
+# Frontend (or deploy to Vercel)
+gcloud run deploy frontend \
+  --source=./frontend \
+  --region=asia-northeast1 \
+  --allow-unauthenticated
+```
+
+### Pub/Sub Configuration
+
+Create push subscription for Creative Agent:
+
+```bash
+gcloud pubsub topics create autonomy-tasks
+
+gcloud pubsub subscriptions create creative-agent-sub \
+  --topic=autonomy-tasks \
+  --push-endpoint=https://creative-agent-URL/api/consume \
+  --push-auth-service-account=invoker@PROJECT_ID.iam.gserviceaccount.com
+```
+
+### Firestore Security Rules
+
+Deploy rules:
+```bash
+firebase deploy --only firestore:rules
+```
+
+## API Reference
+
+### Strategy Agent
+
+**POST /api/strategize**
+- Generate marketing strategy from goal
+- Returns: `event_id`, `status`, `task_list`
+
+**POST /api/approve**
+- Approve pending strategy
+- Requires: Firebase ID Token
+- Returns: `event_id`, `status`, `published`
+
+### Creative Agent
+
+**POST /api/consume**
+- Pub/Sub push endpoint
+- Requires: Secret token in Authorization header
+- Generates assets and updates Firestore
 
 ## Security
-- Firestore rules enforce **read-only for clients**.
-- All state mutations are handled server-side.
-- Pub/Sub push requests use OIDC token authentication.
-- Service accounts follow least-privilege principle.
+
+- **Firestore**: Read-only client access, server-side writes only
+- **API Auth**: `/approve` endpoint validates Firebase ID tokens
+- **Pub/Sub**: Secret token validation for push endpoint
+- **Service Accounts**: Minimal IAM permissions per service
+
+## Development Patterns
+
+- **Mock-first**: Develop without API costs
+- **Protocol interfaces**: Easy testing with mock implementations
+- **Singleton services**: Consistent state across requests
+- **Atomic transactions**: HITL approval workflow integrity
+- **Idempotent processing**: Safe duplicate message handling
+
+## Contributing
+
+1. Create feature branch from `main`
+2. Make changes with tests
+3. Run tests locally
+4. Push and create PR
+5. Wait for CI to pass
+
+## License
+
+MIT
+
+## Hackathon Notes
+
+**Track**: AI Agents Track
+**Requirements Met**:
+- ✅ Two communicating agents (Strategy → Creative via Pub/Sub)
+- ✅ Cloud Run deployment
+- ✅ Human-in-the-Loop approval workflow
+- ✅ Vertex AI integration (Gemini, Imagen, Veo)
+
+**MVP Features**:
+- Marketing strategy generation
+- Asset creation (copy, images, video briefs)
+- Real-time status updates
+- Approval workflow with Firestore transactions
