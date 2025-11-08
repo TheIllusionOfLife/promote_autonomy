@@ -42,7 +42,7 @@ class MockImageService:
         # Try to use a nice font, fall back to default if unavailable
         try:
             font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=40)
-        except:
+        except (OSError, IOError):
             font = ImageFont.load_default()
 
         # Wrap prompt text
@@ -78,7 +78,7 @@ class MockImageService:
         # Add "MOCK IMAGE" watermark
         try:
             watermark_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", size=20)
-        except:
+        except (OSError, IOError):
             watermark_font = font
 
         watermark = "MOCK IMAGE"
