@@ -78,7 +78,13 @@ class TestRealVeoVideoService:
         """Test successful video generation with VEO API."""
         from app.services.video import RealVeoVideoService
 
-        # Mock google.genai.Client
+        # Mock google.genai module
+        mock_genai = Mock()
+        mock_genai_types = Mock()
+        mock_config = Mock()
+        mock_config.aspect_ratio = "16:9"
+        mock_genai_types.GenerateVideosConfig = Mock(return_value=mock_config)
+
         mock_client = Mock()
         mock_operation = Mock()
         mock_operation.done = False
@@ -99,17 +105,32 @@ class TestRealVeoVideoService:
 
         mock_client.operations.get = get_operation
         mock_client.models.generate_videos = Mock(return_value=mock_operation)
+        mock_genai.Client = Mock(return_value=mock_client)
+        mock_genai.types = mock_genai_types
 
-        # Mock GCS download
+        # Mock GCS download and storage
         mock_video_bytes = b"fake mp4 video data with ftyp header"
+        mock_storage = Mock()
 
-        with patch("app.services.video.genai.Client", return_value=mock_client):
-            with patch.object(
-                RealVeoVideoService, "_download_from_gcs", new=AsyncMock(return_value=mock_video_bytes)
-            ):
+        with patch.dict("sys.modules", {
+            "google.genai": mock_genai,
+            "google.genai.types": mock_genai_types,
+            "google.cloud.storage": mock_storage
+        }):
+            with patch("app.services.video.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_settings.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
+                mock_settings.VEO_TIMEOUT_SEC = 360
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 15
+                mock_get_settings.return_value = mock_settings
+
                 service = RealVeoVideoService()
-                config = VideoTaskConfig(prompt="Test video", duration_sec=15)
+                service._download_from_gcs = AsyncMock(return_value=mock_video_bytes)
 
+                config = VideoTaskConfig(prompt="Test video", duration_sec=15)
                 video_bytes = await service.generate_video(config)
 
                 assert video_bytes == mock_video_bytes
@@ -120,23 +141,37 @@ class TestRealVeoVideoService:
         """Test timeout handling during video generation."""
         from app.services.video import RealVeoVideoService
 
-        # Mock client that never completes
+        # Mock google.genai module
+        mock_genai = Mock()
+        mock_genai_types = Mock()
+        mock_config = Mock()
+        mock_genai_types.GenerateVideosConfig = Mock(return_value=mock_config)
+
         mock_client = Mock()
         mock_operation = Mock()
         mock_operation.done = False  # Always not done
 
         mock_client.operations.get = Mock(return_value=mock_operation)
         mock_client.models.generate_videos = Mock(return_value=mock_operation)
+        mock_genai.Client = Mock(return_value=mock_client)
+        mock_genai.types = mock_genai_types
 
-        with patch("app.services.video.genai.Client", return_value=mock_client):
-            # Set very short timeout for testing
-            with patch("app.services.video.get_settings") as mock_settings:
-                mock_settings.return_value.VEO_TIMEOUT_SEC = 1
-                mock_settings.return_value.VEO_POLLING_INTERVAL_SEC = 0.1
-                mock_settings.return_value.VEO_MODEL = "veo-3.0-generate-001"
-                mock_settings.return_value.VIDEO_OUTPUT_GCS_BUCKET = "gs://test"
-                mock_settings.return_value.PROJECT_ID = "test-project"
-                mock_settings.return_value.LOCATION = "us-central1"
+        mock_storage = Mock()
+
+        with patch.dict("sys.modules", {
+            "google.genai": mock_genai,
+            "google.genai.types": mock_genai_types,
+            "google.cloud.storage": mock_storage
+        }):
+            with patch("app.services.video.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_settings.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test"
+                mock_settings.VEO_TIMEOUT_SEC = 1  # Very short timeout for testing
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 0.1
+                mock_get_settings.return_value = mock_settings
 
                 service = RealVeoVideoService()
                 config = VideoTaskConfig(prompt="Test", duration_sec=15)
@@ -148,7 +183,13 @@ class TestRealVeoVideoService:
     async def test_generate_video_with_aspect_ratio(self):
         """Test video generation respects aspect ratio configuration."""
         from app.services.video import RealVeoVideoService
-        from google.genai.types import GenerateVideosConfig
+
+        # Mock google.genai module
+        mock_genai = Mock()
+        mock_genai_types = Mock()
+        mock_config = Mock()
+        mock_config.aspect_ratio = "16:9"
+        mock_genai_types.GenerateVideosConfig = Mock(return_value=mock_config)
 
         mock_client = Mock()
         mock_operation = Mock()
@@ -169,14 +210,30 @@ class TestRealVeoVideoService:
             return mock_operation
 
         mock_client.models.generate_videos = capture_generate_videos
+        mock_genai.Client = Mock(return_value=mock_client)
+        mock_genai.types = mock_genai_types
 
-        with patch("app.services.video.genai.Client", return_value=mock_client):
-            with patch.object(
-                RealVeoVideoService, "_download_from_gcs", new=AsyncMock(return_value=b"video data")
-            ):
+        mock_storage = Mock()
+
+        with patch.dict("sys.modules", {
+            "google.genai": mock_genai,
+            "google.genai.types": mock_genai_types,
+            "google.cloud.storage": mock_storage
+        }):
+            with patch("app.services.video.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_settings.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
+                mock_settings.VEO_TIMEOUT_SEC = 360
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 15
+                mock_get_settings.return_value = mock_settings
+
                 service = RealVeoVideoService()
-                config = VideoTaskConfig(prompt="Test", duration_sec=15)
+                service._download_from_gcs = AsyncMock(return_value=b"video data")
 
+                config = VideoTaskConfig(prompt="Test", duration_sec=15)
                 await service.generate_video(config)
 
                 # Verify aspect_ratio was passed in config
@@ -196,7 +253,8 @@ class TestGCSDownload:
 
         mock_video_data = b"test video content"
 
-        # Mock google.cloud.storage.Client
+        # Mock google.cloud.storage module and Client
+        mock_storage_module = Mock()
         mock_blob = Mock()
         mock_blob.download_as_bytes = Mock(return_value=mock_video_data)
 
@@ -205,21 +263,32 @@ class TestGCSDownload:
 
         mock_storage_client = Mock()
         mock_storage_client.bucket = Mock(return_value=mock_bucket)
+        mock_storage_module.Client = Mock(return_value=mock_storage_client)
 
-        with patch("app.services.video.storage.Client", return_value=mock_storage_client):
-            service = RealVeoVideoService()
+        mock_genai = Mock()
 
-            video_bytes = await service._download_from_gcs("gs://test-bucket/path/to/video.mp4")
+        with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
+            with patch("app.core.config.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_get_settings.return_value = mock_settings
 
-            assert video_bytes == mock_video_data
-            mock_storage_client.bucket.assert_called_with("test-bucket")
-            mock_bucket.blob.assert_called_with("path/to/video.mp4")
+                service = RealVeoVideoService()
+
+                video_bytes = await service._download_from_gcs("gs://test-bucket/path/to/video.mp4")
+
+                assert video_bytes == mock_video_data
+                mock_storage_client.bucket.assert_called_with("test-bucket")
+                mock_bucket.blob.assert_called_with("path/to/video.mp4")
 
     @pytest.mark.asyncio
     async def test_download_from_gcs_parses_uri(self):
         """Test GCS URI parsing extracts bucket and path correctly."""
         from app.services.video import RealVeoVideoService
 
+        # Mock google.cloud.storage module
+        mock_storage_module = Mock()
         mock_blob = Mock()
         mock_blob.download_as_bytes = Mock(return_value=b"data")
 
@@ -228,22 +297,31 @@ class TestGCSDownload:
 
         mock_storage_client = Mock()
         mock_storage_client.bucket = Mock(return_value=mock_bucket)
+        mock_storage_module.Client = Mock(return_value=mock_storage_client)
 
-        with patch("app.services.video.storage.Client", return_value=mock_storage_client):
-            service = RealVeoVideoService()
+        mock_genai = Mock()
 
-            # Test various URI formats
-            test_cases = [
-                ("gs://my-bucket/video.mp4", "my-bucket", "video.mp4"),
-                ("gs://bucket-name/folder/subfolder/file.mp4", "bucket-name", "folder/subfolder/file.mp4"),
-            ]
+        with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
+            with patch("app.core.config.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_get_settings.return_value = mock_settings
 
-            for uri, expected_bucket, expected_path in test_cases:
-                await service._download_from_gcs(uri)
+                service = RealVeoVideoService()
 
-                # Verify bucket and blob path extraction
-                assert mock_storage_client.bucket.call_args[0][0] == expected_bucket
-                assert mock_bucket.blob.call_args[0][0] == expected_path
+                # Test various URI formats
+                test_cases = [
+                    ("gs://my-bucket/video.mp4", "my-bucket", "video.mp4"),
+                    ("gs://bucket-name/folder/subfolder/file.mp4", "bucket-name", "folder/subfolder/file.mp4"),
+                ]
+
+                for uri, expected_bucket, expected_path in test_cases:
+                    await service._download_from_gcs(uri)
+
+                    # Verify bucket and blob path extraction
+                    assert mock_storage_client.bucket.call_args[0][0] == expected_bucket
+                    assert mock_bucket.blob.call_args[0][0] == expected_path
 
 
 class TestVideoServiceFactory:
@@ -266,22 +344,29 @@ class TestVideoServiceFactory:
         """Test factory returns RealVeoVideoService when USE_MOCK_VEO is False."""
         from app.services.video import get_video_service
 
-        with patch("app.services.video.get_settings") as mock_settings:
-            mock_settings.return_value.USE_MOCK_VEO = False
-            mock_settings.return_value.USE_MOCK_GEMINI = False
-            mock_settings.return_value.VEO_MODEL = "veo-3.0-generate-001"
-            mock_settings.return_value.VIDEO_OUTPUT_GCS_BUCKET = "gs://test"
-            mock_settings.return_value.PROJECT_ID = "test-project"
-            mock_settings.return_value.LOCATION = "us-central1"
-            mock_settings.return_value.VEO_TIMEOUT_SEC = 360
-            mock_settings.return_value.VEO_POLLING_INTERVAL_SEC = 15
+        # Reset singleton to None for this test
+        import app.services.video
+        app.services.video._real_video_service = None
+        app.services.video._mock_video_service = None
 
-        # Mock genai.Client to avoid real initialization
-        with patch("app.services.video.genai.Client"):
-            service = get_video_service()
+        mock_genai = Mock()
+        mock_storage = Mock()
 
-            # Should be RealVeoVideoService
-            assert service.__class__.__name__ == "RealVeoVideoService"
+        with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage}):
+            with patch("app.services.video.get_settings") as mock_settings:
+                mock_settings.return_value.USE_MOCK_VEO = False
+                mock_settings.return_value.USE_MOCK_GEMINI = False
+                mock_settings.return_value.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.return_value.VIDEO_OUTPUT_GCS_BUCKET = "gs://test"
+                mock_settings.return_value.PROJECT_ID = "test-project"
+                mock_settings.return_value.LOCATION = "us-central1"
+                mock_settings.return_value.VEO_TIMEOUT_SEC = 360
+                mock_settings.return_value.VEO_POLLING_INTERVAL_SEC = 15
+
+                service = get_video_service()
+
+                # Should be RealVeoVideoService
+                assert service.__class__.__name__ == "RealVeoVideoService"
 
     def test_get_video_service_singleton_pattern(self):
         """Test factory returns same instance on repeated calls."""

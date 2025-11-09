@@ -160,20 +160,19 @@ async def consume_task(
             return url
 
         async def generate_video_task():
-            """Generate and upload video brief."""
+            """Generate and upload video."""
             if not task_list.video:
                 return None
 
-            logger.info(f"Generating video brief for job {event_id}")
-            video_brief = await video_service.generate_video_brief(task_list.video)
-            brief_bytes = video_brief.encode("utf-8")
+            logger.info(f"Generating video for job {event_id}")
+            video_bytes = await video_service.generate_video(task_list.video)
             url = await storage_service.upload_file(
                 event_id=event_id,
-                filename="video_brief.txt",
-                content=brief_bytes,
-                content_type="text/plain",
+                filename="video.mp4",
+                content=video_bytes,
+                content_type="video/mp4",
             )
-            logger.info(f"Video brief generated for job {event_id}")
+            logger.info(f"Video generated for job {event_id}")
             return url
 
         # Generate all assets in parallel (2-3x faster)
