@@ -74,7 +74,7 @@ promote-autonomy/
     └── ci.yml             # Tests for all services
 ```
 
-**Total: 58 passing tests** across all Python services.
+**Total: 62 passing tests** across all Python services (shared: 24, strategy: 14, creative: 24).
 
 ## Quick Start
 
@@ -293,3 +293,12 @@ MIT
 - Asset creation (copy, images, video briefs)
 - Real-time status updates
 - Approval workflow with Firestore transactions
+
+## Project Status
+
+For current development status, recent work, and next priority tasks, see [session_handover.md](session_handover.md).
+
+**Quick Status**:
+- ✅ Code: 100% complete (62/62 tests passing)
+- 🚧 Deployment: Ready for Cloud Run (~50 minutes remaining)
+- 📋 Next: Deploy services and obtain public demo URL
