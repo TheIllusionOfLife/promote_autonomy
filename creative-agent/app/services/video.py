@@ -161,6 +161,15 @@ class RealVeoVideoService:
             # Refresh operation status
             operation = await asyncio.to_thread(self.client.operations.get, operation)
 
+        # Check for errors first before inspecting result
+        if hasattr(operation, 'error') and operation.error:
+            error_msg = f"Veo API error: {operation.error}"
+            if hasattr(operation.error, 'message'):
+                error_msg = f"Veo API error: {operation.error.message}"
+            if hasattr(operation.error, 'code'):
+                error_msg = f"{error_msg} (code: {operation.error.code})"
+            raise RuntimeError(error_msg)
+
         # Extract video URI from result
         if not operation.result or not operation.result.generated_videos:
             raise RuntimeError("Veo API returned no videos in operation result")

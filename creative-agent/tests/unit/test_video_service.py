@@ -88,6 +88,7 @@ class TestRealVeoVideoService:
         mock_client = Mock()
         mock_operation = Mock()
         mock_operation.done = False
+        mock_operation.error = None  # No error for success case
         mock_result = Mock()
         mock_video = Mock()
         mock_video.uri = "gs://test-bucket/test-video.mp4"
@@ -100,6 +101,7 @@ class TestRealVeoVideoService:
             call_count[0] += 1
             if call_count[0] >= 2:
                 mock_operation.done = True
+                mock_operation.error = None  # Ensure no error on completion
                 mock_operation.result = mock_result
             return mock_operation
 
@@ -194,6 +196,7 @@ class TestRealVeoVideoService:
         mock_client = Mock()
         mock_operation = Mock()
         mock_operation.done = True
+        mock_operation.error = None  # No error for success case
         mock_result = Mock()
         mock_video = Mock()
         mock_video.uri = "gs://test-bucket/video.mp4"
