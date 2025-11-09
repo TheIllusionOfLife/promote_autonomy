@@ -25,9 +25,9 @@ class Settings(BaseSettings):
     PUBSUB_SECRET_TOKEN: str
 
     # Mock Mode Flags
-    USE_MOCK_GEMINI: bool = False
-    USE_MOCK_IMAGEN: bool = False
-    USE_MOCK_VEO: bool = False
+    USE_MOCK_GEMINI: bool = False  # For copy.py and video.py
+    USE_MOCK_IMAGEN: bool = False  # For image.py
+    USE_MOCK_VEO: bool = False      # For video.py (if using Veo for actual videos)
     USE_MOCK_FIRESTORE: bool = False
     USE_MOCK_STORAGE: bool = False
 

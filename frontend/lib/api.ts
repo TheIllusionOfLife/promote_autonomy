@@ -39,8 +39,14 @@ export async function strategize(goal: string): Promise<StrategizeResponse> {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Strategize failed: ${error}`);
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `Strategize failed: ${response.statusText}`);
+    } else {
+      const error = await response.text();
+      throw new Error(`Strategize failed: ${error || response.statusText}`);
+    }
   }
 
   return await response.json();
@@ -70,8 +76,14 @@ export async function approveJob(eventId: string): Promise<ApproveResponse> {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Approve failed: ${error}`);
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `Approve failed: ${response.statusText}`);
+    } else {
+      const error = await response.text();
+      throw new Error(`Approve failed: ${error || response.statusText}`);
+    }
   }
 
   return await response.json();

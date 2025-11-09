@@ -1,6 +1,9 @@
 """Gemini API service for task list generation."""
 
+import asyncio
+import json
 import logging
+import re
 from typing import Protocol
 
 from promote_autonomy_shared.schemas import (
@@ -102,16 +105,13 @@ Rules:
             response = await asyncio.to_thread(self.model.generate_content, prompt)
             response_text = response.text.strip()
 
-            # Remove markdown code blocks if present
-            if response_text.startswith("```"):
-                lines = response_text.split("\n")
-                response_text = "\n".join(
-                    line for line in lines if not line.startswith("```")
-                ).strip()
+            # Extract JSON from markdown code blocks using regex
+            # Handles formats: ```json\n{...}\n```, ```\n{...}\n```, or plain {...}
+            json_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", response_text, re.DOTALL)
+            if json_match:
+                response_text = json_match.group(1).strip()
 
             # Parse JSON to TaskList
-            import json
-
             data = json.loads(response_text)
             task_list = TaskList(**data)
 

@@ -8,11 +8,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user owns the resource
-    function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
-    }
-
     // Jobs collection - users can only read their own jobs
     // All writes happen server-side via service accounts
     match /jobs/{eventId} {

@@ -54,7 +54,7 @@ export default function Home() {
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!goal.trim()) return;
+    if (!goal.trim() || !user) return;
 
     setLoading(true);
     setError('');
@@ -64,7 +64,7 @@ export default function Home() {
       // The job will be populated via Firestore listener
       setCurrentJob({
         event_id: response.event_id,
-        uid: user!.uid,
+        uid: user.uid,
         status: response.status,
         task_list: response.task_list,
         created_at: new Date().toISOString(),
