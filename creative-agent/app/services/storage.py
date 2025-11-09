@@ -74,13 +74,11 @@ class RealStorageService:
         # Upload with content type
         blob.upload_from_string(content, content_type=content_type)
 
-        # Generate signed URL (1 hour expiration)
-        signed_url = blob.generate_signed_url(
-            expiration=datetime.timedelta(hours=1),
-            method="GET",
-        )
+        # Make blob publicly readable
+        blob.make_public()
 
-        return signed_url
+        # Return public URL
+        return blob.public_url
 
 
 # Service instance management

@@ -160,9 +160,9 @@ class RealImageService:
         if not response.images:
             raise RuntimeError("Vertex AI Imagen returned no images")
 
-        # Get first image using public API
+        # Get first image
         vertex_image = response.images[0]
-        image_bytes = vertex_image.image_bytes  # Use public property, not private _image_bytes
+        image_bytes = vertex_image._image_bytes  # Access internal image bytes property
 
         # Load image to check actual size
         pil_image = Image.open(BytesIO(image_bytes))

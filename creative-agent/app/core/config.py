@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     IMAGEN_TIMEOUT_SEC: int = 90  # Timeout for Imagen API calls
     VEO_TIMEOUT_SEC: int = 120    # Timeout for Veo API calls
 
-    # Pub/Sub Configuration
-    PUBSUB_SECRET_TOKEN: str
+    # Pub/Sub Configuration (deprecated - now using OIDC)
+    PUBSUB_SECRET_TOKEN: str = ""  # Optional, no longer used with OIDC auth
 
     # Mock Mode Flags
     USE_MOCK_GEMINI: bool = False  # For copy.py and video.py

@@ -4,10 +4,11 @@ import asyncio
 import base64
 import json
 import logging
-import secrets
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from pydantic import BaseModel
 
 from promote_autonomy_shared.schemas import TaskList, JobStatus
@@ -41,18 +42,49 @@ class MessageData(BaseModel):
 @router.post("/consume")
 async def consume_task(
     pubsub_message: PubSubMessage,
+    request: Request,
     authorization: str | None = Header(None),
 ) -> dict[str, Any]:
     """Consume task from Pub/Sub and generate assets.
 
     This endpoint is called by Pub/Sub push subscription.
-    It validates the secret token, decodes the message,
+    It validates the OIDC token from Pub/Sub, decodes the message,
     generates all requested assets, and updates Firestore.
     """
-    # Verify secret token (constant-time comparison)
-    expected_token = f"Bearer {settings.PUBSUB_SECRET_TOKEN}"
-    if not (authorization and secrets.compare_digest(authorization, expected_token)):
-        raise HTTPException(status_code=401, detail="Invalid authorization token")
+    # Verify OIDC token from Pub/Sub
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+
+    token = authorization.split("Bearer ")[1]
+
+    try:
+        # The OIDC token from Pub/Sub has the full endpoint URL as audience
+        # Cloud Run is behind a load balancer, so try both http and https
+        audience_http = str(request.url)
+        audience_https = audience_http.replace("http://", "https://", 1)
+
+        # Try to verify with both audiences
+        claim = None
+        for aud in [audience_https, audience_http]:
+            try:
+                claim = id_token.verify_oauth2_token(
+                    token, google_requests.Request(), aud
+                )
+                break
+            except ValueError:
+                continue
+
+        if not claim:
+            raise ValueError(f"Token has wrong audience, expected {audience_https}")
+
+        # Verify the token is from the expected service account
+        if claim.get("email") != "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com":
+            logger.warning(f"Unexpected service account: {claim.get('email')}")
+            raise HTTPException(status_code=403, detail="Invalid service account")
+
+    except Exception as e:
+        logger.warning(f"Invalid OIDC token: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid OIDC token: {e}")
 
     # Decode message data
     try:

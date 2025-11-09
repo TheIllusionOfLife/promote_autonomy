@@ -1,0 +1,24 @@
+Promote Autonomy - Deployment Information
+Generated: Sun Nov  9 18:54:43 JST 2025
+
+Service URLs:
+  Frontend:        https://frontend-luwcxjaugq-an.a.run.app
+  Strategy Agent:  https://strategy-agent-luwcxjaugq-an.a.run.app
+  Creative Agent:  https://creative-agent-luwcxjaugq-an.a.run.app
+
+Configuration:
+  Project ID:      promote-autonomy
+  Region:          asia-northeast1
+  Storage Bucket:  gs://promote-autonomy-assets
+  Pub/Sub Topic:   creative-tasks
+  Pub/Sub Secret:  uT3qtYq14NK7W47v+i6ULdTd7mn5WmZ1UaL1BtXtVYo=
+
+Service Accounts:
+  Strategy Agent:  strategy-agent-sa@promote-autonomy.iam.gserviceaccount.com
+  Creative Agent:  creative-agent-sa@promote-autonomy.iam.gserviceaccount.com
+  Pub/Sub Invoker: pubsub-invoker@promote-autonomy.iam.gserviceaccount.com
+
+Next Steps:
+1. Add frontend domain to Firebase authorized domains
+2. Test end-to-end workflow
+3. Submit hackathon entry with Frontend URL
