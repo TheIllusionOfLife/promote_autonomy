@@ -121,7 +121,7 @@ class Job(BaseModel):
     )
     captions: list[str] = Field(
         default_factory=list,
-        description="Generated caption strings",
+        description="URLs to JSON files in Cloud Storage containing generated captions",
     )
     images: list[str] = Field(
         default_factory=list,
