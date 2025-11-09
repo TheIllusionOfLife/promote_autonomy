@@ -4,128 +4,230 @@ This file tracks the current project status, recent work, and next priority task
 
 ---
 
-## Last Updated: November 09, 2025 02:27 PM JST
+## Last Updated: November 10, 2025 05:30 PM JST
 
 ## Recently Completed
 
-### ✅ [PR #3](https://github.com/TheIllusionOfLife/promote_autonomy/pull/3) Complete MVP Implementation
-- Full HITL workflow with atomic Firestore transactions
-- 62 passing tests (shared: 24, strategy: 14, creative: 24)
-- Mock-first development support
-- CI/CD pipeline for all services
-- Comprehensive security implementation
+### ✅ [PR #6](https://github.com/TheIllusionOfLife/promote_autonomy/pull/6) Production Fixes (Merged)
+- Fixed Gemini timeout (60s → 120s) to prevent video brief generation failures
+- Removed text truncation from Image and Video prompt display
+- Added `overflowWrap: 'break-word'` to prevent UI overflow
+- Added deployment status analysis document
 
-### ✅ Critical Fixes (Post-review commits)
-- Fixed Pub/Sub singleton pattern preventing test assertions
-- Added timeout protection for all Vertex AI calls (60-120s)
-- Expanded retry logic to catch GoogleAPICallError
-- Made retry parameters configurable via environment variables
-- Added missing Authorization header to frontend /strategize calls
-- Fixed Firestore listener dependencies to prevent cross-user data leaks
-- Added TaskList validation requiring at least one asset
-- Implemented thread-safe storage credential handling
-- Added frontend error recovery and asset URL display
+### ✅ Frontend Layout Improvements (Current Branch: `fix/frontend-layout-improvements`)
+- Added scrollable container with `maxHeight: 70vh` for long content
+- Added proper spacing (`marginBottom: 1rem`) between all fields
+- Fixed caption display to fetch actual JSON and show emojis properly (🚀, ✨, 👑)
+- No more Unicode escape sequences (`\ud83d\ude80` now displays as 🚀)
 
-### ✅ Documentation Updates
-- Updated HACKATHON_BUILD_PLAN.md with milestone completion status (100% code, 0% deployment)
-- Updated ROADMAP.md with detailed milestone progress (M1: 100%, M2: 80%, M3: 60%)
-- Updated MVP spec.md with implementation status (100% complete, deployment ready)
-- Created session_handover.md to separate transient status from permanent README
+### ✅ Documentation Reorganization
+- Created `docs/DEPLOYMENT.md` with current production status
+- Created `FEATURE_ROADMAP.md` with comprehensive future plan
+- Moved historical planning docs to `docs/archive/`
+- Updated `README.md` with live demo URL
+
+### ✅ Full Cloud Run Deployment
+- All 3 services deployed and operational
+- End-to-end workflow tested and verified
+- Pub/Sub subscription correctly configured
+- Cloud Storage bucket operational with public URLs
+
+---
+
+## Current Project Status
+
+### Live Production URLs
+- **Frontend**: https://frontend-909635873035.asia-northeast1.run.app
+- **Strategy Agent**: https://strategy-agent-909635873035.asia-northeast1.run.app
+- **Creative Agent**: https://creative-agent-909635873035.asia-northeast1.run.app
+
+### System Health
+- ✅ All services healthy and responsive
+- ✅ End-to-end workflow functional (goal → strategy → approve → assets)
+- ✅ Asset generation working (7 captions, 1 image, 1 video brief)
+- ✅ Pub/Sub messaging operational
+- ✅ Cloud Storage public URLs accessible
+- ✅ No timeout errors with 120s Gemini timeout
+
+### Test Coverage
+- **Total**: 62/62 passing (100% pass rate)
+- **Shared**: 24 tests
+- **Strategy Agent**: 14 tests
+- **Creative Agent**: 24 tests
 
 ---
 
 ## Next Priority Tasks
 
-### 1. [CRITICAL] Deploy to Cloud Run
-- **Source**: Hackathon submission requirement (Phase 4)
-- **Context**: All code is production-ready and tested (62 passing tests)
-- **Approach**: Execute deployment commands documented in README
-- **Estimated Time**: ~50 minutes total
-- **Steps**:
-  1. Deploy Strategy Agent to Cloud Run (~15 min)
-  2. Deploy Creative Agent to Cloud Run (~15 min)
-  3. Create Pub/Sub topic and subscription (~10 min)
-  4. Deploy Frontend to Vercel or Cloud Run (~10 min)
-  5. End-to-end testing (~15 min)
-- **Deliverable**: Public "Try it Out" URL for hackathon judges
+### 1. [IMMEDIATE] Complete Current PR (fix/frontend-layout-improvements)
+- **Context**: 4 commits ready on branch
+- **Changes**:
+  1. Scrollable task list for long content
+  2. Fetch and display actual captions (fixes emojis)
+  3. Comprehensive feature roadmap
+  4. Documentation reorganization
+- **Action**: Push branch, create PR, merge
+- **Estimated Time**: 15 minutes
 
-### 2. [OPTIONAL] Add Rate Limiting
-- **Source**: Claude Code review feedback
-- **Context**: Public endpoints lack protection against abuse
-- **Approach**: Add slowapi middleware or Cloud Armor
-- **Priority**: Medium - Good for production hardening
+### 2. [HIGH PRIORITY] Real VEO Video Generation
+- **Source**: FEATURE_ROADMAP.md Phase 1
+- **Context**: Code exists, just needs activation
+- **Benefit**: Generate actual 15-20s videos instead of text briefs
+- **Estimated Time**: 1-2 hours
+- **Location**: `creative-agent/app/services/video.py`
+- **Risk**: Medium (VEO is slow, 2-5 min per video)
 
-### 3. [OPTIONAL] Add Integration Tests
-- **Source**: Multiple review recommendations
-- **Context**: Currently only unit tests exist
-- **Approach**: Use Firebase emulators for end-to-end testing
-- **Priority**: Medium - Increases confidence but MVP works
+### 3. [HIGH PRIORITY] Multi-Modal Input (Product Photos)
+- **Source**: FEATURE_ROADMAP.md Phase 1
+- **Context**: Users need to upload product photos for context-aware generation
+- **Benefit**: Generated content features actual products, not generic stock imagery
+- **Estimated Time**: 2-3 hours
+- **Implementation**:
+  - Frontend: Add file upload input
+  - Strategy Agent: Store uploaded image in Cloud Storage
+  - Creative Agent: Use Gemini Vision to analyze image
+  - Imagen: Use reference image for generation
 
-### 4. [OPTIONAL] Frontend Error Boundaries
-- **Source**: Claude Code review
-- **Context**: Runtime errors could crash entire app
-- **Approach**: Add React error boundary components
-- **Priority**: Low - Nice-to-have for production
+### 4. [CRITICAL FOR USABILITY] Platform-Specific Configuration
+- **Source**: FEATURE_ROADMAP.md Phase 2
+- **Context**: Different platforms (Instagram, X, LinkedIn) have different requirements
+- **Problem**: Current system only generates 1024x1024 images - often unusable
+- **Benefit**: Generate assets that meet platform specs (sizes, aspect ratios, file limits)
+- **Estimated Time**: 3-4 hours
+- **Requirements**:
+  - Instagram Feed: 1080x1080, max 4MB
+  - Instagram Story: 1080x1920 (9:16), max 15s video
+  - X: 1200x675 (16:9), max 2:20 video
+  - Facebook: 1200x630 (1.91:1)
+  - LinkedIn: 1200x627 (1.91:1)
 
-### 5. [OPTIONAL] Add Structured Logging
-- **Source**: Review feedback
-- **Context**: Better observability for Cloud Run
-- **Approach**: JSON logging for Cloud Logging integration
-- **Priority**: Low - Can add when deploying to production
+### 5. [OPTIONAL] Campaign Templates
+- **Source**: FEATURE_ROADMAP.md Phase 3
+- **Context**: Pre-built templates for common scenarios
+- **Benefit**: Faster campaign creation
+- **Estimated Time**: 2-3 hours
+- **Priority**: Low - nice-to-have
 
-### 6. [OPTIONAL] Document Transaction Atomicity Limitation
-- **Source**: Claude Code review
-- **Context**: Firestore transaction + Pub/Sub publish not truly atomic
-- **Approach**: Document known limitation and mitigation strategies
-- **Priority**: Low - Acceptable risk for MVP
+---
+
+## Current Branch Work
+
+### Branch: `fix/frontend-layout-improvements`
+**Commits** (4 total):
+1. `1f3ca0a` - fix: improve task list layout for long content
+2. `6b65804` - fix: fetch and display actual captions instead of URL
+3. `143d11b` - docs: add comprehensive feature roadmap
+4. `fbceb75` - docs: reorganize documentation structure (modified to keep session_handover.md)
+
+**Status**: Ready to push and create PR
+
+**Changes Summary**:
+- ✅ Fixed UI layout issues (scrolling, spacing, wrapping)
+- ✅ Fixed caption display (emojis, no URL)
+- ✅ Added comprehensive documentation
+- ✅ Cleaned up outdated planning docs
 
 ---
 
 ## Known Issues / Blockers
 
-- None - MVP is production-ready for hackathon submission
+### None Currently
+All production issues resolved. System is stable and functional.
 
 ---
 
 ## Session Learnings
 
-### Frontend Auth Pattern
-Always audit all API calls for Authorization headers when backend requires auth. Missing headers cause production 401 errors that work in development.
+### Hard Refresh Required After Deployment
+Browser caching can show old frontend code after redeployment. Always hard refresh (`Cmd+Shift+R` on Mac) or use incognito mode to verify changes.
 
-### Singleton Pattern for Cloud Run
-Critical for Cloud Run performance - prevents repeated client initialization on every request. Use global variables with conditional initialization.
+### Caption URL vs Caption Text
+Firestore stores Cloud Storage URL to `captions.json`, not the actual captions. Frontend must fetch and parse JSON to display captions properly and render emojis correctly.
 
-### Timeout Protection for LLM Calls
-Wrap all LLM calls with `asyncio.wait_for()` to prevent infinite hangs. Configure timeouts based on model type (Gemini: 60s, Imagen: 90s, Veo: 120s).
+### Platform-Specific Requirements Are Critical
+Users can't use generated assets if they don't meet platform specs. This is a critical usability feature, not a nice-to-have enhancement.
 
-### Retry Robustness
-Catch `GoogleAPICallError` for comprehensive Google API error handling. This covers transient failures beyond just `ConnectionError` and `TimeoutError`.
-
-### Multi-Reviewer Handling
-Systematically extract and prioritize feedback from multiple AI reviewers. Use three-phase protocol: discover → filter → verify to prevent missing issues.
-
-### CORS Configuration
-Confirmed that CORS was already properly configured with `settings.FRONTEND_URL`. Always verify existing implementation before adding "fixes".
+### Documentation Consolidation
+Too many overlapping planning docs creates confusion. Keep:
+- `README.md` - Entry point with current status
+- `session_handover.md` - Dynamic daily priorities (this file)
+- `FEATURE_ROADMAP.md` - Static long-term vision
+- `docs/DEPLOYMENT.md` - Production deployment info
+- `docs/archive/` - Historical planning docs
 
 ---
 
-## Project Status Summary
+## Hackathon Submission Status
 
-**Code Completion**: 100% ✅ (all features implemented and tested)
-**Test Coverage**: 62/62 passing (100% pass rate)
-**Deployment Status**: 0% (not yet deployed to Cloud Run)
+### ✅ All Requirements Met
+1. ✅ Two distinct AI agents (Strategy + Creative)
+2. ✅ Agents communicate via Pub/Sub (not direct API calls)
+3. ✅ Both agents use Vertex AI (Gemini 2.5 Flash, Imagen 4.0)
+4. ✅ Deployed to Cloud Run (all 3 services live)
+5. ✅ Human-in-the-loop approval workflow (innovation)
+6. ✅ Working "Try it Out" link
 
-**MVP Spec Compliance**: 100% ✅
-- All 6 architecture components implemented
-- All 8 data flow steps functional
-- Complete task list schema with validation
-- Fallback logic tested and working
+### Demo Readiness
+- ✅ Live demo URL available
+- ✅ End-to-end workflow tested
+- ✅ Assets generate successfully
+- ✅ Public URLs accessible
+- ✅ No timeout errors
+- ✅ UI displays properly (with pending frontend improvements)
 
-**Milestone Progress**:
-- Milestone 1 (Core MVP): 100% ✅ - All deliverables complete
-- Milestone 2 (Production Stability): 80% ✅ - Missing monitoring dashboard only
-- Milestone 3 (Enhanced AI): 60% 🚧 - Core AI done, brand guide deferred
-- Milestone 4 (Collaboration): 0% ❌ - Future work
-- Milestone 5 (Feedback Loop): 0% ❌ - Future work
+### Recommended Next Steps for Maximum Impact
+**If you have 1 day (8 hours)**:
+1. Merge current PR (15 min)
+2. Platform-specific configuration (4 hours) - **Highest impact for usability**
+3. Real VEO integration (2 hours) - **Highest impact for demo**
+4. Multi-modal input (2 hours) - **Highest impact for real-world use**
 
-**Immediate Next Step**: Execute Cloud Run deployment (~50 minutes)
+**If time-constrained**:
+1. Merge current PR
+2. Focus on demo preparation and presentation
+3. Document platform-specific config and VEO as "future work"
+
+---
+
+## Quick Reference
+
+### Deploy Services
+```bash
+# Strategy Agent
+cd strategy-agent && gcloud run deploy strategy-agent --source=. --region=asia-northeast1
+
+# Creative Agent
+gcloud builds submit --config=cloudbuild-creative.yaml --region=asia-northeast1
+gcloud run deploy creative-agent --image=asia-northeast1-docker.pkg.dev/promote-autonomy/cloud-run-source-deploy/creative-agent --region=asia-northeast1 --no-allow-unauthenticated
+
+# Frontend
+cd frontend && gcloud run deploy frontend --source=. --region=asia-northeast1 --allow-unauthenticated
+```
+
+### Health Checks
+```bash
+# All services
+curl https://strategy-agent-909635873035.asia-northeast1.run.app/health
+curl https://frontend-909635873035.asia-northeast1.run.app
+```
+
+### View Logs
+```bash
+# Recent errors
+gcloud logging read "resource.type=cloud_run_revision AND severity>=ERROR" --limit=20
+
+# Specific service
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=creative-agent" --limit=50
+```
+
+---
+
+## Project Metrics
+
+**Code Completion**: 100% ✅
+**Deployment**: 100% ✅
+**Test Coverage**: 62/62 passing (100%)
+**Production Stability**: ✅ Operational
+**Hackathon Readiness**: ✅ Fully ready
+
+**Immediate Next Action**: Merge `fix/frontend-layout-improvements` PR
