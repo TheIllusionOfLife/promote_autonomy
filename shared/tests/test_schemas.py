@@ -61,6 +61,38 @@ class TestImageTaskConfig:
         with pytest.raises(ValidationError):
             ImageTaskConfig()  # type: ignore
 
+    def test_image_config_validates_size_format(self):
+        """Test size format validation rejects invalid formats."""
+        # Missing 'x' separator
+        with pytest.raises(ValidationError, match="Invalid size format"):
+            ImageTaskConfig(prompt="Test", size="1024")
+
+        # Non-numeric width
+        with pytest.raises(ValidationError, match="Invalid size format"):
+            ImageTaskConfig(prompt="Test", size="widthx1024")
+
+        # Non-numeric height
+        with pytest.raises(ValidationError, match="Invalid size format"):
+            ImageTaskConfig(prompt="Test", size="1024xheight")
+
+        # Empty string
+        with pytest.raises(ValidationError, match="Invalid size format"):
+            ImageTaskConfig(prompt="Test", size="")
+
+    def test_image_config_validates_positive_dimensions(self):
+        """Test size validation rejects zero or negative dimensions."""
+        # Zero width
+        with pytest.raises(ValidationError, match="Invalid dimensions"):
+            ImageTaskConfig(prompt="Test", size="0x1024")
+
+        # Zero height
+        with pytest.raises(ValidationError, match="Invalid dimensions"):
+            ImageTaskConfig(prompt="Test", size="1024x0")
+
+        # Both zero
+        with pytest.raises(ValidationError, match="Invalid dimensions"):
+            ImageTaskConfig(prompt="Test", size="0x0")
+
 
 class TestVideoTaskConfig:
     """Tests for VideoTaskConfig model."""

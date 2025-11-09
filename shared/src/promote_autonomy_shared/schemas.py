@@ -1,9 +1,10 @@
 """Core data schemas for Promote Autonomy."""
 
+import re
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class JobStatus(str, Enum):
@@ -34,6 +35,26 @@ class ImageTaskConfig(BaseModel):
         default="1024x1024",
         description="Image size (e.g., '1024x1024', '1024x1792')",
     )
+
+    @field_validator("size")
+    @classmethod
+    def validate_size_format(cls, v: str) -> str:
+        """Validate size format is WIDTHxHEIGHT with positive integers."""
+        if not re.match(r"^\d+x\d+$", v):
+            raise ValueError(
+                f"Invalid size format '{v}'. Expected format: 'WIDTHxHEIGHT' "
+                "(e.g., '1024x1024', '1024x1792')"
+            )
+
+        # Parse and validate positive dimensions
+        width, height = map(int, v.split("x"))
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                f"Invalid dimensions: {width}x{height}. "
+                "Width and height must be positive integers."
+            )
+
+        return v
 
 
 class VideoTaskConfig(BaseModel):
