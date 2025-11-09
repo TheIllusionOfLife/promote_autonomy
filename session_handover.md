@@ -8,7 +8,7 @@ This file tracks the current project status, recent work, and next priority task
 
 ## Recently Completed
 
-### ✅ [PR #3] Complete MVP Implementation
+### ✅ [PR #3](https://github.com/TheIllusionOfLife/promote_autonomy/pull/3) Complete MVP Implementation
 - Full HITL workflow with atomic Firestore transactions
 - 62 passing tests (shared: 24, strategy: 14, creative: 24)
 - Mock-first development support
