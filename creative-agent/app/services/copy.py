@@ -30,8 +30,9 @@ class MockCopyService:
 
     async def generate_captions(self, config: CaptionTaskConfig, goal: str) -> list[str]:
         """Generate mock captions based on goal keywords."""
-        # Simple heuristic: use goal keywords
-        base_caption = f"✨ {goal.split()[:3]}"
+        # Simple heuristic: use first three words from goal
+        top_words = " ".join(goal.split()[:3])
+        base_caption = f"✨ {top_words}"
         captions = []
 
         for i in range(config.n):

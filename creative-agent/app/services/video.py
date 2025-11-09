@@ -48,12 +48,18 @@ class RealVideoService:
 
     def __init__(self):
         """Initialize Gemini for video brief generation."""
-        import vertexai
-        settings = get_settings()
-        from vertexai.generative_models import GenerativeModel
+        try:
+            import vertexai
+            settings = get_settings()
+            from vertexai.generative_models import GenerativeModel
 
-        vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
-        self.model = GenerativeModel("gemini-2.5-flash")
+            vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
+            self.model = GenerativeModel("gemini-2.5-flash")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to initialize Vertex AI for video service "
+                f"(project={settings.PROJECT_ID}, location={settings.LOCATION}): {e}"
+            ) from e
 
     async def generate_video_brief(self, config: VideoTaskConfig) -> str:
         """Generate detailed video brief using Gemini.
@@ -91,7 +97,9 @@ def get_video_service() -> VideoService:
 
     settings = get_settings()
 
-    if settings.USE_MOCK_VEO:
+    # Use mock if either USE_MOCK_VEO or USE_MOCK_GEMINI is enabled
+    # RealVideoService uses Gemini, so respect USE_MOCK_GEMINI flag
+    if settings.USE_MOCK_VEO or settings.USE_MOCK_GEMINI:
         if _mock_video_service is None:
             _mock_video_service = MockVideoService()
         return _mock_video_service
