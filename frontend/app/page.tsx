@@ -59,9 +59,20 @@ export default function Home() {
     const abortController = new AbortController();
 
     const fetchCaptions = async () => {
+      // Extract caption URL and validate it
       const captionsUrl = currentJob?.captions?.[0]?.trim();
+
       if (currentJob?.status === 'completed' && captionsUrl) {
         try {
+          // Security: Validate URL is from expected Cloud Storage bucket
+          const ALLOWED_BUCKET = 'promote-autonomy-assets';
+          const url = new URL(captionsUrl);
+
+          if (url.hostname !== 'storage.googleapis.com' ||
+              !url.pathname.startsWith(`/${ALLOWED_BUCKET}/`)) {
+            throw new Error('Invalid caption URL: must be from Cloud Storage bucket');
+          }
+
           const response = await fetch(captionsUrl, { signal: abortController.signal });
 
           if (!response.ok) {
@@ -82,6 +93,7 @@ export default function Home() {
           if (!abortController.signal.aborted) {
             console.error('Failed to fetch captions:', err);
             setActualCaptions([]);
+            setError('Failed to load captions. Please try again.');
           }
         }
       } else {
