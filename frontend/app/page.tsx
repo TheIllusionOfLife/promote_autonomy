@@ -13,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
+  const [actualCaptions, setActualCaptions] = useState<string[]>([]);
 
   // Auto sign-in anonymously
   useEffect(() => {
@@ -52,6 +53,60 @@ export default function Home() {
 
     return () => unsubscribe();
   }, [currentJob?.event_id, user]);
+
+  // Fetch actual captions from the URL when job is completed
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    const fetchCaptions = async () => {
+      // Extract caption URL and validate it
+      const captionsUrl = currentJob?.captions?.[0]?.trim();
+
+      if (currentJob?.status === 'completed' && captionsUrl) {
+        try {
+          // Security: Validate URL is from expected Cloud Storage bucket
+          const ALLOWED_BUCKET = 'promote-autonomy-assets';
+          const url = new URL(captionsUrl);
+
+          if (url.hostname !== 'storage.googleapis.com' ||
+              !url.pathname.startsWith(`/${ALLOWED_BUCKET}/`)) {
+            throw new Error('Invalid caption URL: must be from Cloud Storage bucket');
+          }
+
+          const response = await fetch(captionsUrl, { signal: abortController.signal });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const captionsData = await response.json();
+
+          // Validate response is an array of strings
+          if (!Array.isArray(captionsData) || !captionsData.every(item => typeof item === 'string')) {
+            throw new Error('Invalid captions data format');
+          }
+
+          if (!abortController.signal.aborted) {
+            setActualCaptions(captionsData);
+          }
+        } catch (err) {
+          if (!abortController.signal.aborted) {
+            console.error('Failed to fetch captions:', err);
+            setActualCaptions([]);
+            setError('Failed to load captions. Please try again.');
+          }
+        }
+      } else {
+        setActualCaptions([]);
+      }
+    };
+
+    fetchCaptions();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [currentJob?.status, currentJob?.captions?.[0]]);
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,20 +198,35 @@ export default function Home() {
       ) : (
         <div>
           <h2>Job Status: {currentJob.status}</h2>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', marginTop: '1rem' }}>
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            marginTop: '1rem',
+            maxHeight: '70vh',
+            overflowY: 'auto'
+          }}>
             <h3>Task List</h3>
-            <p><strong>Goal:</strong> {currentJob.task_list.goal}</p>
+            <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+              <strong>Goal:</strong> {currentJob.task_list.goal}
+            </p>
 
             {currentJob.task_list.captions && (
-              <p><strong>Captions:</strong> {currentJob.task_list.captions.n} {currentJob.task_list.captions.style} captions</p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Captions:</strong> {currentJob.task_list.captions.n} {currentJob.task_list.captions.style} captions
+              </p>
             )}
 
             {currentJob.task_list.image && (
-              <p><strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt}</p>
+              <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+                <strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt}
+              </p>
             )}
 
             {currentJob.task_list.video && (
-              <p><strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}</p>
+              <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+                <strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}
+              </p>
             )}
 
             {currentJob.status === 'pending_approval' && (
@@ -182,12 +252,12 @@ export default function Home() {
               <div style={{ marginTop: '1rem' }}>
                 <h4>Generated Assets:</h4>
 
-                {currentJob.captions.length > 0 && (
+                {actualCaptions.length > 0 && (
                   <div style={{ marginBottom: '1rem' }}>
-                    <strong>Captions ({currentJob.captions.length}):</strong>
-                    <ul style={{ marginTop: '0.5rem' }}>
-                      {currentJob.captions.map((caption, i) => (
-                        <li key={i} style={{ marginBottom: '0.5rem' }}>{caption}</li>
+                    <strong>Captions ({actualCaptions.length}):</strong>
+                    <ul style={{ marginTop: '0.5rem', listStylePosition: 'inside' }}>
+                      {actualCaptions.map((caption, i) => (
+                        <li key={i} style={{ marginBottom: '0.5rem', wordWrap: 'break-word' }}>{caption}</li>
                       ))}
                     </ul>
                   </div>

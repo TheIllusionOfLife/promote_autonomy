@@ -292,9 +292,15 @@ firebase deploy --only firestore:rules
 
 ## Project Status
 
-For current development status, recent work, and next priority tasks, see [session_handover.md](session_handover.md).
+**Live Demo**: https://frontend-909635873035.asia-northeast1.run.app
 
-**Quick Status**:
-- ✅ Code: 100% complete (62/62 tests passing)
-- 🚧 Deployment: Ready for Cloud Run (~50 minutes remaining)
-- 📋 Next: Deploy services and obtain public demo URL
+**Current Status**:
+- ✅ **Code**: 100% complete (62/62 tests passing)
+- ✅ **Deployment**: Fully deployed to Cloud Run (all 3 services live)
+- ✅ **End-to-End Testing**: Verified working in production
+- ✅ **Hackathon Ready**: Public demo URL available
+
+**Documentation**:
+- **Deployment Info**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for service URLs, health checks, and production verification
+- **Future Features**: See [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) for planned enhancements
+- **Historical Docs**: Archived planning documents in [docs/archive/](docs/archive/)
