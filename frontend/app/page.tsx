@@ -56,16 +56,33 @@ export default function Home() {
 
   // Fetch actual captions from the URL when job is completed
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchCaptions = async () => {
-      if (currentJob?.status === 'completed' && currentJob.captions.length > 0) {
+      const captionsUrl = currentJob?.captions?.[0]?.trim();
+      if (currentJob?.status === 'completed' && captionsUrl) {
         try {
-          const captionsUrl = currentJob.captions[0];
-          const response = await fetch(captionsUrl);
+          const response = await fetch(captionsUrl, { signal: abortController.signal });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
           const captionsData = await response.json();
-          setActualCaptions(captionsData);
+
+          // Validate response is an array of strings
+          if (!Array.isArray(captionsData) || !captionsData.every(item => typeof item === 'string')) {
+            throw new Error('Invalid captions data format');
+          }
+
+          if (!abortController.signal.aborted) {
+            setActualCaptions(captionsData);
+          }
         } catch (err) {
-          console.error('Failed to fetch captions:', err);
-          setActualCaptions([]);
+          if (!abortController.signal.aborted) {
+            console.error('Failed to fetch captions:', err);
+            setActualCaptions([]);
+          }
         }
       } else {
         setActualCaptions([]);
@@ -73,7 +90,11 @@ export default function Home() {
     };
 
     fetchCaptions();
-  }, [currentJob?.status, currentJob?.captions]);
+
+    return () => {
+      abortController.abort();
+    };
+  }, [currentJob?.status, currentJob?.captions?.[0]]);
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();

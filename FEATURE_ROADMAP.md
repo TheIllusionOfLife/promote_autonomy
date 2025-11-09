@@ -61,6 +61,7 @@ Build an AI-powered marketing automation system that generates high-quality prom
 # Replace Gemini text generation with actual VEO API calls
 # Similar to how Imagen is used in image.py
 
+import asyncio
 from vertexai.preview.vision_models import VideoGenerationModel
 
 class RealVideoService:
@@ -126,6 +127,13 @@ const [productImage, setProductImage] = useState<File | null>(null);
 
 @router.post("/strategize")
 async def strategize(goal: str, reference_image: Optional[UploadFile] = None):
+    # Generate event_id first
+    event_id = generate_event_id()
+
+    # Initialize reference_url to None
+    reference_url = None
+    image_analysis = None
+
     if reference_image:
         # Upload to Cloud Storage
         reference_url = await storage.upload_file(
@@ -134,16 +142,17 @@ async def strategize(goal: str, reference_image: Optional[UploadFile] = None):
             await reference_image.read()
         )
 
-    # Pass to Gemini for image analysis
-    image_analysis = await gemini.analyze_image(reference_url, goal)
+        # Pass to Gemini for image analysis
+        image_analysis = await gemini.analyze_image(reference_url, goal)
 
     # Generate task list with reference image context
+    prompt_prefix = f"Based on the reference image: {image_analysis}" if image_analysis else ""
     task_list = TaskList(
         goal=goal,
-        reference_images=[reference_url],
+        reference_images=[reference_url] if reference_url else [],
         image=ImageTaskConfig(
-            prompt=f"Based on the reference image: {image_analysis}",
-            reference_image=reference_url  # NEW field
+            prompt=f"{prompt_prefix}. {goal}" if image_analysis else goal,
+            reference_image=reference_url  # NEW field (can be None)
         )
     )
 ```
@@ -287,6 +296,10 @@ const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
 # strategy-agent/app/routers/strategize.py
 @router.post("/strategize")
 async def strategize(request: StrategizeRequest):
+    # Validate platforms are selected
+    if not request.target_platforms:
+        raise HTTPException(status_code=400, detail="At least one target platform must be selected")
+
     # Get platform specs
     specs = [PLATFORM_SPECS[p] for p in request.target_platforms]
 
