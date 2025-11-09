@@ -1,5 +1,6 @@
 """Copy generation service."""
 
+import re
 from typing import Protocol
 
 from promote_autonomy_shared.schemas import CaptionTaskConfig
@@ -74,18 +75,13 @@ Return ONLY the captions, one per line, numbered 1-{config.n}."""
 
         response = self.model.generate_content(prompt)
 
-        # Parse numbered list
+        # Parse numbered list using regex for robustness
+        # Handles formats: "1. ", "1) ", "1- ", "1.", "1)", "1 ", etc.
         lines = response.text.strip().split("\n")
         captions = []
         for line in lines:
-            # Remove numbering like "1. " or "1) "
-            clean_line = line.strip()
-            if clean_line and (clean_line[0].isdigit() or clean_line.startswith("-")):
-                # Split on first ". " or ") " or "- "
-                for sep in [". ", ") ", "- "]:
-                    if sep in clean_line:
-                        clean_line = clean_line.split(sep, 1)[1]
-                        break
+            # Remove leading numbering (e.g., "1. ", "1) ", "1-", "1 ")
+            clean_line = re.sub(r"^\s*\d+[\.\)\-\s]\s*", "", line.strip())
             if clean_line:
                 captions.append(clean_line)
 
