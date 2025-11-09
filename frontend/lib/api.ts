@@ -27,10 +27,13 @@ export async function strategize(goal: string): Promise<StrategizeResponse> {
     throw new Error('User not authenticated');
   }
 
+  const idToken = await getIdToken();
+
   const response = await fetch(`${STRATEGY_AGENT_URL}/api/strategize`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`,
     },
     body: JSON.stringify({
       goal,
