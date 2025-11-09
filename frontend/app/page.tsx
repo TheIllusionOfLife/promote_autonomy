@@ -143,20 +143,35 @@ export default function Home() {
       ) : (
         <div>
           <h2>Job Status: {currentJob.status}</h2>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', marginTop: '1rem' }}>
+          <div style={{
+            background: 'white',
+            padding: '1.5rem',
+            borderRadius: '8px',
+            marginTop: '1rem',
+            maxHeight: '70vh',
+            overflowY: 'auto'
+          }}>
             <h3>Task List</h3>
-            <p><strong>Goal:</strong> {currentJob.task_list.goal}</p>
+            <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+              <strong>Goal:</strong> {currentJob.task_list.goal}
+            </p>
 
             {currentJob.task_list.captions && (
-              <p><strong>Captions:</strong> {currentJob.task_list.captions.n} {currentJob.task_list.captions.style} captions</p>
+              <p style={{ marginBottom: '1rem' }}>
+                <strong>Captions:</strong> {currentJob.task_list.captions.n} {currentJob.task_list.captions.style} captions
+              </p>
             )}
 
             {currentJob.task_list.image && (
-              <p><strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt}</p>
+              <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+                <strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt}
+              </p>
             )}
 
             {currentJob.task_list.video && (
-              <p><strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}</p>
+              <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
+                <strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}
+              </p>
             )}
 
             {currentJob.status === 'pending_approval' && (
