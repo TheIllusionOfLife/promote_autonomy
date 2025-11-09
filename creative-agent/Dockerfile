@@ -10,11 +10,11 @@ WORKDIR /app
 # Copy shared package to maintain relative path structure
 COPY shared /app/shared
 
-# Copy strategy-agent files to /app/strategy-agent
-COPY strategy-agent /app/strategy-agent
+# Copy creative-agent files to /app/creative-agent
+COPY creative-agent /app/creative-agent
 
-# Set working directory to strategy-agent (where pyproject.toml is)
-WORKDIR /app/strategy-agent
+# Set working directory to creative-agent (where pyproject.toml is)
+WORKDIR /app/creative-agent
 
 # Install dependencies (now ../shared resolves to /app/shared)
 RUN uv sync --frozen --no-dev

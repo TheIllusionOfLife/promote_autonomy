@@ -1,5 +1,7 @@
 """FastAPI application entry point for Strategy Agent."""
 
+import firebase_admin
+from firebase_admin import credentials
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +15,22 @@ app = FastAPI(
     description="AI strategy generation with Human-in-the-Loop approval",
     version="0.1.0",
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Firebase Admin SDK on startup."""
+    if not firebase_admin._apps:
+        # Use Application Default Credentials on Cloud Run
+        # For local development, set GOOGLE_APPLICATION_CREDENTIALS env var
+        if settings.FIREBASE_CREDENTIALS_PATH:
+            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+        else:
+            cred = credentials.ApplicationDefault()
+
+        firebase_admin.initialize_app(cred, {
+            "projectId": settings.PROJECT_ID,
+        })
 
 # CORS middleware for frontend communication
 # Use FRONTEND_URL from environment for production security

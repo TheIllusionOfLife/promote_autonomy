@@ -2,6 +2,7 @@
 
 import os
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 
@@ -20,8 +21,20 @@ def setup_test_env():
 
 
 @pytest.fixture
-def test_client():
-    """Create test client for FastAPI app."""
+def mock_oidc_verification():
+    """Mock OIDC token verification for tests."""
+    with patch("google.oauth2.id_token.verify_oauth2_token") as mock_verify:
+        # Return a valid claim with the expected service account email
+        mock_verify.return_value = {
+            "email": "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com",
+            "sub": "test-subject",
+        }
+        yield mock_verify
+
+
+@pytest.fixture
+def test_client(mock_oidc_verification):
+    """Create test client for FastAPI app with mocked OIDC verification."""
     from app.main import app
 
     return TestClient(app)

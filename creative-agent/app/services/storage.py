@@ -66,7 +66,14 @@ class RealStorageService:
         self.bucket = self.client.bucket(settings.STORAGE_BUCKET)
 
     async def upload_file(self, event_id: str, filename: str, content: bytes, content_type: str) -> str:
-        """Upload file to Cloud Storage."""
+        """Upload file to Cloud Storage.
+
+        SECURITY NOTE: This method makes uploaded files permanently publicly accessible.
+        This is intentional for promotional marketing assets that are meant to be shared.
+        All files in this bucket should be considered public content.
+
+        Alternative: Use signed URLs with expiration for time-limited access.
+        """
         # Create blob path
         blob_name = f"{event_id}/{filename}"
         blob = self.bucket.blob(blob_name)
@@ -74,13 +81,20 @@ class RealStorageService:
         # Upload with content type
         blob.upload_from_string(content, content_type=content_type)
 
-        # Generate signed URL (1 hour expiration)
-        signed_url = blob.generate_signed_url(
-            expiration=datetime.timedelta(hours=1),
-            method="GET",
-        )
+        # Make blob publicly readable
+        # This requires storage.objects.setIamPolicy permission
+        # Bucket must not have public access prevention enforced
+        try:
+            blob.make_public()
+        except Exception as e:
+            # Log error but don't fail - file is uploaded even if public access fails
+            import logging
+            logging.error(f"Failed to make blob public: {e}. File uploaded but not publicly accessible.")
+            # Return the URL anyway - it may work if bucket-level permissions allow
+            return blob.public_url
 
-        return signed_url
+        # Return public URL
+        return blob.public_url
 
 
 # Service instance management
