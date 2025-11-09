@@ -99,7 +99,7 @@ Rules:
 """
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
             response_text = response.text.strip()
 
             # Remove markdown code blocks if present

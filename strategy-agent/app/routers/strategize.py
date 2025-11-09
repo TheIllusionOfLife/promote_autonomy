@@ -2,7 +2,8 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
+from firebase_admin import auth
 from ulid import ULID
 
 from app.models.request import StrategizeRequest
@@ -20,20 +21,54 @@ router = APIRouter()
     response_model=StrategizeResponse,
     responses={
         400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         500: {"model": ErrorResponse},
     },
 )
-async def strategize(request: StrategizeRequest):
+async def strategize(
+    request: StrategizeRequest,
+    authorization: str | None = Header(None),
+):
     """
     Generate a marketing strategy from a high-level goal.
 
     This endpoint:
-    1. Uses Gemini AI to generate a structured task list
-    2. Creates a job in Firestore with status=pending_approval
-    3. Returns the event_id for the user to review and approve
+    1. Verifies Firebase ID token to authenticate the user
+    2. Uses Gemini AI to generate a structured task list
+    3. Creates a job in Firestore with status=pending_approval
+    4. Returns the event_id for the user to review and approve
 
     The job remains in pending_approval until the user calls /approve.
     """
+    # Verify Firebase ID token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid authorization header",
+        )
+
+    id_token = authorization.split("Bearer ")[1]
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        token_uid = decoded_token["uid"]
+    except Exception as e:
+        logger.warning(f"Invalid Firebase ID token: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Firebase ID token",
+        )
+
+    # Verify token UID matches request UID
+    if token_uid != request.uid:
+        logger.warning(
+            f"UID mismatch: token={token_uid}, request={request.uid}"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="UID mismatch between token and request",
+        )
+
     try:
         # Generate unique event ID
         event_id = str(ULID())

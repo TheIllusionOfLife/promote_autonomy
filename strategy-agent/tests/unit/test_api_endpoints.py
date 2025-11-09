@@ -30,11 +30,12 @@ class TestHealthEndpoint:
 class TestStrategizeEndpoint:
     """Tests for /strategize endpoint."""
 
-    def test_strategize_success(self, test_client, mock_user_id, sample_goal):
+    def test_strategize_success(self, test_client, mock_user_id, sample_goal, auth_headers):
         """Test successful strategy generation."""
         response = test_client.post(
             "/api/strategize",
             json={"goal": sample_goal, "uid": mock_user_id},
+            headers=auth_headers,
         )
         assert response.status_code == 200
         data = response.json()
@@ -59,13 +60,31 @@ class TestStrategizeEndpoint:
         )
         assert response.status_code == 422  # Validation error
 
-    def test_strategize_requires_uid(self, test_client, sample_goal):
+    def test_strategize_requires_uid(self, test_client, sample_goal, auth_headers):
         """Test that uid is required."""
         response = test_client.post(
             "/api/strategize",
             json={"goal": sample_goal},
+            headers=auth_headers,
         )
         assert response.status_code == 422  # Validation error
+
+    def test_strategize_requires_auth(self, test_client, mock_user_id, sample_goal):
+        """Test that authorization header is required."""
+        response = test_client.post(
+            "/api/strategize",
+            json={"goal": sample_goal, "uid": mock_user_id},
+        )
+        assert response.status_code == 401
+
+    def test_strategize_rejects_uid_mismatch(self, test_client, sample_goal):
+        """Test that token uid must match request uid."""
+        response = test_client.post(
+            "/api/strategize",
+            json={"goal": sample_goal, "uid": "different_user"},
+            headers={"Authorization": "Bearer test_user_123"},
+        )
+        assert response.status_code == 403
 
 
 @pytest.mark.unit
@@ -78,6 +97,7 @@ class TestApproveEndpoint:
         create_response = test_client.post(
             "/api/strategize",
             json={"goal": sample_goal, "uid": mock_user_id},
+            headers=auth_headers,
         )
         assert create_response.status_code == 200
         event_id = create_response.json()["event_id"]
@@ -111,6 +131,7 @@ class TestApproveEndpoint:
         create_response = test_client.post(
             "/api/strategize",
             json={"goal": sample_goal, "uid": mock_user_id},
+            headers=auth_headers,
         )
         event_id = create_response.json()["event_id"]
 
@@ -134,6 +155,7 @@ class TestApproveEndpoint:
         create_response = test_client.post(
             "/api/strategize",
             json={"goal": sample_goal, "uid": mock_user_id},
+            headers=auth_headers,
         )
         event_id = create_response.json()["event_id"]
 

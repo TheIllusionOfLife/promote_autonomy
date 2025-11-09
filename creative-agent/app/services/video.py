@@ -1,5 +1,6 @@
 """Video generation service."""
 
+import asyncio
 from typing import Protocol
 
 from promote_autonomy_shared.schemas import VideoTaskConfig
@@ -75,7 +76,7 @@ Provide:
 
 Format as a production-ready brief that a video editor could follow."""
 
-        response = self.model.generate_content(prompt)
+        response = await asyncio.to_thread(self.model.generate_content, prompt)
         return response.text.strip()
 
 

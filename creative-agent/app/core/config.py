@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     STORAGE_BUCKET: str
 
     # Firebase Configuration
-    FIREBASE_CREDENTIALS_PATH: str = "./service-account-key.json"
+    FIREBASE_CREDENTIALS_PATH: str = ""  # Empty = use ADC (Cloud Run default)
 
     # Vertex AI Configuration
     IMAGEN_MODEL: str = "imagen-3.0-generate-001"

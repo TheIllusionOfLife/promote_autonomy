@@ -1,7 +1,6 @@
 """Creative Agent FastAPI application."""
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.routers import consume
@@ -14,15 +13,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS middleware
-# Use FRONTEND_URL from environment for production security
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# No CORS middleware needed - Creative Agent only accepts Pub/Sub push requests
+# It is not accessed by browsers, so CORS is unnecessary
 
 # Include routers
 app.include_router(consume.router, prefix="/api", tags=["consume"])

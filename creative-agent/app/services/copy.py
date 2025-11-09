@@ -1,5 +1,6 @@
 """Copy generation service."""
 
+import asyncio
 import re
 from typing import Protocol
 
@@ -73,7 +74,7 @@ Requirements:
 
 Return ONLY the captions, one per line, numbered 1-{config.n}."""
 
-        response = self.model.generate_content(prompt)
+        response = await asyncio.to_thread(self.model.generate_content, prompt)
 
         # Parse numbered list using regex for robustness
         # Handles formats: "1. ", "1) ", "1- ", "1.", "1)", "1 ", etc.
