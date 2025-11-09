@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     IMAGEN_MODEL: str = "imagen-3.0-generate-001"
     VEO_MODEL: str = "veo-001"
     GEMINI_MODEL: str = "gemini-2.0-flash-exp"
-    GEMINI_TIMEOUT_SEC: int = 60  # Timeout for Gemini API calls
-    IMAGEN_TIMEOUT_SEC: int = 90  # Timeout for Imagen API calls
-    VEO_TIMEOUT_SEC: int = 120    # Timeout for Veo API calls
+    GEMINI_TIMEOUT_SEC: int = 120  # Timeout for Gemini API calls (increased from 60s)
+    IMAGEN_TIMEOUT_SEC: int = 90   # Timeout for Imagen API calls
+    VEO_TIMEOUT_SEC: int = 120     # Timeout for Veo API calls
 
     # Pub/Sub Configuration (deprecated - now using OIDC)
     PUBSUB_SECRET_TOKEN: str = ""  # Optional, no longer used with OIDC auth
