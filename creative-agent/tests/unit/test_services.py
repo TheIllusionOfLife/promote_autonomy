@@ -149,7 +149,7 @@ class TestMockFirestoreService:
         service = MockFirestoreService()
 
         # Manually add a job
-        task_list = TaskList(goal="Test goal")
+        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
         service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",
@@ -171,7 +171,7 @@ class TestMockFirestoreService:
         service = MockFirestoreService()
 
         # Create initial job
-        task_list = TaskList(goal="Test goal")
+        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
         service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",

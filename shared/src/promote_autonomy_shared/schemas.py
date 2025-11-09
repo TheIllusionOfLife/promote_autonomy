@@ -4,7 +4,7 @@ import re
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class JobStatus(str, Enum):
@@ -85,6 +85,16 @@ class TaskList(BaseModel):
         default=None,
         description="Video generation configuration",
     )
+
+    @model_validator(mode='after')
+    def at_least_one_task(self):
+        """Validate that at least one task type is specified."""
+        if not (self.captions or self.image or self.video):
+            raise ValueError(
+                "At least one task (captions, image, or video) must be specified. "
+                "Cannot create a job with no assets to generate."
+            )
+        return self
 
     model_config = {"json_schema_extra": {"example": {
         "goal": "Increase awareness of new feature",

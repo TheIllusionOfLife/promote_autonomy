@@ -142,12 +142,14 @@ class TestTaskList:
         assert task_list.video.duration_sec == 20
 
     def test_task_list_only_goal(self):
-        """Test task list with only goal (all tasks optional)."""
-        task_list = TaskList(goal="Simple goal")
-        assert task_list.goal == "Simple goal"
-        assert task_list.captions is None
-        assert task_list.image is None
-        assert task_list.video is None
+        """Test task list with only goal fails validation."""
+        import pytest
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            TaskList(goal="Simple goal")
+
+        assert "At least one task" in str(exc_info.value)
 
     def test_task_list_partial_tasks(self):
         """Test task list with some tasks defined."""
@@ -217,7 +219,10 @@ class TestJob:
 
     def test_job_with_approval(self):
         """Test job with approval timestamp."""
-        task_list = TaskList(goal="Test")
+        task_list = TaskList(
+            goal="Test",
+            captions=CaptionTaskConfig(n=1)
+        )
         job = Job(
             event_id="01JD4S3ABC",
             uid="user123",
@@ -232,7 +237,10 @@ class TestJob:
 
     def test_job_with_generated_assets(self):
         """Test job with generated assets."""
-        task_list = TaskList(goal="Test")
+        task_list = TaskList(
+            goal="Test",
+            captions=CaptionTaskConfig(n=2)
+        )
         job = Job(
             event_id="01JD4S3ABC",
             uid="user123",
@@ -276,7 +284,10 @@ class TestJob:
 
     def test_job_status_transitions(self):
         """Test valid status transitions."""
-        task_list = TaskList(goal="Status test")
+        task_list = TaskList(
+            goal="Status test",
+            captions=CaptionTaskConfig(n=1)
+        )
 
         # pending_approval
         job = Job(

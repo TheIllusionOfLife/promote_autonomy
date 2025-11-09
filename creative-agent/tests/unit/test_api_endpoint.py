@@ -70,7 +70,7 @@ class TestConsumeEndpoint:
         """Test consume endpoint handles missing job."""
         message_data = {
             "event_id": "nonexistent-job",
-            "task_list": {"goal": "Test goal"},
+            "task_list": {"goal": "Test goal", "captions": {"n": 1, "style": "engaging"}},
         }
         encoded_data = base64.b64encode(json.dumps(message_data).encode()).decode()
 
@@ -91,7 +91,7 @@ class TestConsumeEndpoint:
         """Test consume endpoint rejects jobs not in processing state."""
         # Create a job in pending_approval state
         firestore_service = get_firestore_service()
-        task_list = TaskList(goal="Test goal")
+        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
         firestore_service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",
@@ -124,7 +124,7 @@ class TestConsumeEndpoint:
         """Test consume endpoint is idempotent for completed jobs."""
         # Create a completed job
         firestore_service = get_firestore_service()
-        task_list = TaskList(goal="Test goal")
+        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
         firestore_service.jobs["completed-job"] = {
             "event_id": "completed-job",
             "uid": "test-user",

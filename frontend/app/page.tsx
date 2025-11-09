@@ -26,6 +26,7 @@ export default function Home() {
           setUser(result.user);
         } catch (err) {
           console.error('Auth error:', err);
+          setError('Authentication failed. Please refresh the page.');
         }
       }
     });
@@ -35,7 +36,7 @@ export default function Home() {
 
   // Listen to job updates
   useEffect(() => {
-    if (!currentJob?.event_id) return;
+    if (!currentJob?.event_id || !user) return;
 
     const unsubscribe = onSnapshot(
       doc(db, 'jobs', currentJob.event_id),
@@ -50,7 +51,7 @@ export default function Home() {
     );
 
     return () => unsubscribe();
-  }, [currentJob?.event_id]);
+  }, [currentJob?.event_id, user]);
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,9 +181,47 @@ export default function Home() {
             {currentJob.status === 'completed' && (
               <div style={{ marginTop: '1rem' }}>
                 <h4>Generated Assets:</h4>
-                {currentJob.captions.length > 0 && <p>Captions: {currentJob.captions.length} generated</p>}
-                {currentJob.images.length > 0 && <p>Images: {currentJob.images.length} generated</p>}
-                {currentJob.videos.length > 0 && <p>Videos: {currentJob.videos.length} generated</p>}
+
+                {currentJob.captions.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <strong>Captions ({currentJob.captions.length}):</strong>
+                    <ul style={{ marginTop: '0.5rem' }}>
+                      {currentJob.captions.map((caption, i) => (
+                        <li key={i} style={{ marginBottom: '0.5rem' }}>{caption}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {currentJob.images.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <strong>Images ({currentJob.images.length}):</strong>
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {currentJob.images.map((url, i) => (
+                        <div key={i} style={{ marginBottom: '0.5rem' }}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3' }}>
+                            View Image {i + 1}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentJob.videos.length > 0 && (
+                  <div>
+                    <strong>Videos ({currentJob.videos.length}):</strong>
+                    <div style={{ marginTop: '0.5rem' }}>
+                      {currentJob.videos.map((url, i) => (
+                        <div key={i} style={{ marginBottom: '0.5rem' }}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3' }}>
+                            View Video {i + 1}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

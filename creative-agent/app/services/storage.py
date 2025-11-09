@@ -45,15 +45,24 @@ class RealStorageService:
     def __init__(self):
         """Initialize Cloud Storage client."""
         from google.cloud import storage
-        import os
+        from google.oauth2 import service_account
 
         settings = get_settings()
 
-        # Set credentials path if specified
+        # Pass credentials directly to client instead of modifying environment
+        # This is thread-safe and doesn't interfere with other Google Cloud clients
         if settings.FIREBASE_CREDENTIALS_PATH:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = settings.FIREBASE_CREDENTIALS_PATH
+            credentials = service_account.Credentials.from_service_account_file(
+                settings.FIREBASE_CREDENTIALS_PATH
+            )
+            self.client = storage.Client(
+                project=settings.PROJECT_ID,
+                credentials=credentials
+            )
+        else:
+            # Use Application Default Credentials (ADC) for Cloud Run
+            self.client = storage.Client(project=settings.PROJECT_ID)
 
-        self.client = storage.Client(project=settings.PROJECT_ID)
         self.bucket = self.client.bucket(settings.STORAGE_BUCKET)
 
     async def upload_file(self, event_id: str, filename: str, content: bytes, content_type: str) -> str:

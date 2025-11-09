@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Header
 from firebase_admin import auth
 from promote_autonomy_shared.schemas import JobStatus
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.models.request import ApproveRequest
 from app.models.response import ApproveResponse, ErrorResponse
@@ -13,6 +14,27 @@ from app.services.pubsub import get_pubsub_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+    reraise=True,
+)
+async def publish_with_retry(pubsub_service, event_id: str, task_list):
+    """
+    Publish task to Pub/Sub with exponential backoff retry.
+
+    Retries up to 3 times for transient network errors:
+    - Attempt 1: immediate
+    - Attempt 2: after 1 second
+    - Attempt 3: after 2 seconds
+
+    Only retries for ConnectionError and TimeoutError (transient failures).
+    Other exceptions (e.g., authentication, invalid data) fail immediately.
+    """
+    return await pubsub_service.publish_task(event_id, task_list)
 
 
 @router.post(
@@ -110,7 +132,8 @@ async def approve(request: ApproveRequest, authorization: str = Header(None)):
         # If publish fails, revert job to pending_approval
         pubsub_service = get_pubsub_service()
         try:
-            message_id = await pubsub_service.publish_task(
+            message_id = await publish_with_retry(
+                pubsub_service,
                 request.event_id,
                 job.task_list,
             )
