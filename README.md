@@ -74,7 +74,7 @@ promote-autonomy/
     └── ci.yml             # Tests for all services
 ```
 
-**Total: 58 passing tests** across all Python services.
+**Total: 62 passing tests** across all Python services (shared: 24, strategy: 14, creative: 24).
 
 ## Quick Start
 
