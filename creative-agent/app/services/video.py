@@ -50,15 +50,15 @@ class RealVideoService:
         """Initialize Gemini for video brief generation."""
         try:
             import vertexai
-            settings = get_settings()
+            self.settings = get_settings()
             from vertexai.generative_models import GenerativeModel
 
-            vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
+            vertexai.init(project=self.settings.PROJECT_ID, location=self.settings.LOCATION)
             self.model = GenerativeModel("gemini-2.5-flash")
         except Exception as e:
             raise RuntimeError(
                 f"Failed to initialize Vertex AI for video service "
-                f"(project={settings.PROJECT_ID}, location={settings.LOCATION}): {e}"
+                f"(project={self.settings.PROJECT_ID}, location={self.settings.LOCATION}): {e}"
             ) from e
 
     async def generate_video_brief(self, config: VideoTaskConfig) -> str:
@@ -82,7 +82,11 @@ Provide:
 
 Format as a production-ready brief that a video editor could follow."""
 
-        response = await asyncio.to_thread(self.model.generate_content, prompt)
+        # Add timeout to prevent infinite hangs
+        response = await asyncio.wait_for(
+            asyncio.to_thread(self.model.generate_content, prompt),
+            timeout=self.settings.GEMINI_TIMEOUT_SEC
+        )
         return response.text.strip()
 
 

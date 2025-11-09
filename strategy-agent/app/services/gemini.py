@@ -102,7 +102,11 @@ Rules:
 """
 
         try:
-            response = await asyncio.to_thread(self.model.generate_content, prompt)
+            # Add timeout to prevent infinite hangs
+            response = await asyncio.wait_for(
+                asyncio.to_thread(self.model.generate_content, prompt),
+                timeout=settings.GEMINI_TIMEOUT_SEC
+            )
             response_text = response.text.strip()
 
             # Extract JSON from markdown code blocks using regex

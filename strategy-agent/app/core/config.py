@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Vertex AI Configuration
     GEMINI_MODEL: str = "gemini-2.0-flash-exp"
+    GEMINI_TIMEOUT_SEC: int = 60  # Timeout for Gemini API calls
 
     # Firebase Configuration
     FIREBASE_CREDENTIALS_PATH: str = ""
@@ -25,6 +26,10 @@ class Settings(BaseSettings):
     USE_MOCK_GEMINI: bool = False
     USE_MOCK_FIRESTORE: bool = False
     USE_MOCK_PUBSUB: bool = False
+
+    # Retry Configuration
+    PUBSUB_RETRY_ATTEMPTS: int = 3
+    PUBSUB_RETRY_MAX_WAIT_SEC: int = 10
 
     # Server Configuration
     PORT: int = 8000

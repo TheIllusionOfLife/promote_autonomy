@@ -56,8 +56,8 @@ class RealCopyService:
         import vertexai
         from vertexai.generative_models import GenerativeModel
 
-        settings = get_settings()
-        vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
+        self.settings = get_settings()
+        vertexai.init(project=self.settings.PROJECT_ID, location=self.settings.LOCATION)
         self.model = GenerativeModel("gemini-2.5-flash")
 
     async def generate_captions(self, config: CaptionTaskConfig, goal: str) -> list[str]:
@@ -75,7 +75,11 @@ Requirements:
 
 Return ONLY the captions, one per line, numbered 1-{config.n}."""
 
-        response = await asyncio.to_thread(self.model.generate_content, prompt)
+        # Add timeout to prevent infinite hangs
+        response = await asyncio.wait_for(
+            asyncio.to_thread(self.model.generate_content, prompt),
+            timeout=self.settings.GEMINI_TIMEOUT_SEC
+        )
 
         # Parse numbered list using regex for robustness
         # Handles formats: "1. ", "1) ", "1- ", "1.", "1)", "1 ", etc.

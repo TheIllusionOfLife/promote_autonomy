@@ -82,8 +82,20 @@ class RealPubSubService:
         return message_id
 
 
+# Service instance management
+_mock_pubsub_service: MockPubSubService | None = None
+_real_pubsub_service: RealPubSubService | None = None
+
+
 def get_pubsub_service() -> PubSubService:
-    """Get Pub/Sub service (mock or real based on settings)."""
+    """Get Pub/Sub service instance (singleton)."""
+    global _mock_pubsub_service, _real_pubsub_service
+
     if settings.USE_MOCK_PUBSUB:
-        return MockPubSubService()
-    return RealPubSubService()
+        if _mock_pubsub_service is None:
+            _mock_pubsub_service = MockPubSubService()
+        return _mock_pubsub_service
+    else:
+        if _real_pubsub_service is None:
+            _real_pubsub_service = RealPubSubService()
+        return _real_pubsub_service

@@ -4,9 +4,11 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Header
 from firebase_admin import auth
+from google.api_core.exceptions import GoogleAPICallError
 from promote_autonomy_shared.schemas import JobStatus
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+from app.core.config import get_settings
 from app.models.request import ApproveRequest
 from app.models.response import ApproveResponse, ErrorResponse
 from app.services.firestore import get_firestore_service
@@ -14,12 +16,13 @@ from app.services.pubsub import get_pubsub_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+settings = get_settings()
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+    stop=stop_after_attempt(settings.PUBSUB_RETRY_ATTEMPTS),
+    wait=wait_exponential(multiplier=1, min=1, max=settings.PUBSUB_RETRY_MAX_WAIT_SEC),
+    retry=retry_if_exception_type((ConnectionError, TimeoutError, GoogleAPICallError)),
     reraise=True,
 )
 async def publish_with_retry(pubsub_service, event_id: str, task_list):
@@ -31,7 +34,10 @@ async def publish_with_retry(pubsub_service, event_id: str, task_list):
     - Attempt 2: after 1 second
     - Attempt 3: after 2 seconds
 
-    Only retries for ConnectionError and TimeoutError (transient failures).
+    Retries for transient failures:
+    - ConnectionError, TimeoutError: Network issues
+    - GoogleAPICallError: Pub/Sub API transient failures (ServiceUnavailable, etc.)
+
     Other exceptions (e.g., authentication, invalid data) fail immediately.
     """
     return await pubsub_service.publish_task(event_id, task_list)
