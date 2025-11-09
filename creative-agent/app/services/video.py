@@ -141,6 +141,7 @@ class RealVeoVideoService:
             prompt=config.prompt,
             config=GenerateVideosConfig(
                 aspect_ratio=aspect_ratio,
+                duration_seconds=duration,
                 output_gcs_uri=output_gcs_uri,
             ),
         )
@@ -224,6 +225,7 @@ def get_video_service() -> VideoService:
     settings = get_settings()
 
     # Use mock if either flag is enabled
+    # RealVeoVideoService uses google.genai (Veo) directly, so respect both flags
     if settings.USE_MOCK_VEO or settings.USE_MOCK_GEMINI:
         if _mock_video_service is None:
             _mock_video_service = MockVideoService()

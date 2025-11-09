@@ -1,6 +1,8 @@
-# Test videos
+# Test videos and temporary test files (not unit tests)
 *.mp4
-test_*.py
+test_real_veo.py
+test_veo_debug.py
+test_veo_*.py
 !tests/
 
 # Python

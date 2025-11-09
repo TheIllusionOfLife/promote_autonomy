@@ -7,7 +7,9 @@ Successfully set up and tested Real VEO 3.0 video generation integration for the
 ## What Was Completed
 
 ### 1. GCP Infrastructure Setup
-- ✅ Enabled required Google Cloud APIs (Vertex AI, Cloud Storage, Firestore, Pub/Sub)
+- ✅ Enabled required Google Cloud APIs
+  - **For VEO 3.0**: Vertex AI (`aiplatform.googleapis.com`), Cloud Storage (`storage.googleapis.com`)
+  - **System-wide**: Firestore, Pub/Sub (already enabled for overall system architecture)
 - ✅ Created GCS bucket: `gs://promote-autonomy-veo-output/veo-videos`
 - ✅ Created service account: `creative-agent@promote-autonomy.iam.gserviceaccount.com`
 - ✅ Granted IAM permissions:
