@@ -152,11 +152,11 @@ export default function Home() {
             )}
 
             {currentJob.task_list.image && (
-              <p><strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt.substring(0, 60)}...</p>
+              <p><strong>Image:</strong> {currentJob.task_list.image.size} - {currentJob.task_list.image.prompt}</p>
             )}
 
             {currentJob.task_list.video && (
-              <p><strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt.substring(0, 60)}...</p>
+              <p><strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}</p>
             )}
 
             {currentJob.status === 'pending_approval' && (
