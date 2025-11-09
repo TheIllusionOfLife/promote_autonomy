@@ -13,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
+  const [actualCaptions, setActualCaptions] = useState<string[]>([]);
 
   // Auto sign-in anonymously
   useEffect(() => {
@@ -52,6 +53,27 @@ export default function Home() {
 
     return () => unsubscribe();
   }, [currentJob?.event_id, user]);
+
+  // Fetch actual captions from the URL when job is completed
+  useEffect(() => {
+    const fetchCaptions = async () => {
+      if (currentJob?.status === 'completed' && currentJob.captions.length > 0) {
+        try {
+          const captionsUrl = currentJob.captions[0];
+          const response = await fetch(captionsUrl);
+          const captionsData = await response.json();
+          setActualCaptions(captionsData);
+        } catch (err) {
+          console.error('Failed to fetch captions:', err);
+          setActualCaptions([]);
+        }
+      } else {
+        setActualCaptions([]);
+      }
+    };
+
+    fetchCaptions();
+  }, [currentJob?.status, currentJob?.captions]);
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,12 +219,12 @@ export default function Home() {
               <div style={{ marginTop: '1rem' }}>
                 <h4>Generated Assets:</h4>
 
-                {currentJob.captions.length > 0 && (
+                {actualCaptions.length > 0 && (
                   <div style={{ marginBottom: '1rem' }}>
-                    <strong>Captions ({currentJob.captions.length}):</strong>
-                    <ul style={{ marginTop: '0.5rem' }}>
-                      {currentJob.captions.map((caption, i) => (
-                        <li key={i} style={{ marginBottom: '0.5rem' }}>{caption}</li>
+                    <strong>Captions ({actualCaptions.length}):</strong>
+                    <ul style={{ marginTop: '0.5rem', listStylePosition: 'inside' }}>
+                      {actualCaptions.map((caption, i) => (
+                        <li key={i} style={{ marginBottom: '0.5rem', wordWrap: 'break-word' }}>{caption}</li>
                       ))}
                     </ul>
                   </div>
