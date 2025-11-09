@@ -78,13 +78,19 @@ async def consume_task(
             raise ValueError(f"Token has wrong audience, expected {audience_https}")
 
         # Verify the token is from the expected service account
-        if claim.get("email") != "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com":
-            logger.warning(f"Unexpected service account: {claim.get('email')}")
+        # TODO: Move this to configuration for multi-environment support
+        expected_sa = "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com"
+        if claim.get("email") != expected_sa:
+            logger.warning(f"Unexpected service account: {claim.get('email')}, expected: {expected_sa}")
             raise HTTPException(status_code=403, detail="Invalid service account")
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like the 403 above) without modification
+        raise
     except Exception as e:
-        logger.warning(f"Invalid OIDC token: {e}")
-        raise HTTPException(status_code=401, detail=f"Invalid OIDC token: {e}")
+        # Catch token validation errors from id_token.verify_oauth2_token
+        logger.warning("Invalid OIDC token: %s", e)
+        raise HTTPException(status_code=401, detail="Invalid OIDC token") from e
 
     # Decode message data
     try:

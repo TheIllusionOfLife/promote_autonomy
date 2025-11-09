@@ -75,3 +75,4 @@ service-account-key.json
 # Build artifacts
 *.pyc
 *.pyo
+deployment-info.txt
