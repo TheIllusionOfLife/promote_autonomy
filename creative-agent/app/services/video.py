@@ -147,7 +147,7 @@ class RealVeoVideoService:
 
         # Poll operation until complete with timeout
         start_time = time.time()
-        while not operation.done:
+        while operation.done is not True:  # Handle None and False
             elapsed = time.time() - start_time
             if elapsed > settings.VEO_TIMEOUT_SEC:
                 raise TimeoutError(

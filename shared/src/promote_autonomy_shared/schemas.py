@@ -63,9 +63,9 @@ class VideoTaskConfig(BaseModel):
     prompt: str = Field(description="Text prompt for video generation")
     duration_sec: int = Field(
         default=15,
-        ge=5,
+        ge=4,
         le=60,
-        description="Video duration in seconds",
+        description="Video duration in seconds (VEO 3.0 supports 4, 6, or 8 seconds)",
     )
 
 
