@@ -275,10 +275,6 @@ firebase deploy --only firestore:rules
 4. Push and create PR
 5. Wait for CI to pass
 
-## License
-
-MIT
-
 ## Hackathon Notes
 
 **Track**: AI Agents Track
