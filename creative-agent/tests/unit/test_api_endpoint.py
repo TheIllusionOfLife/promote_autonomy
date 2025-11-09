@@ -3,6 +3,8 @@
 import base64
 import json
 import pytest
+from unittest.mock import patch
+from fastapi.testclient import TestClient
 
 from promote_autonomy_shared.schemas import TaskList, JobStatus, CaptionTaskConfig
 
@@ -25,25 +27,33 @@ class TestHealthEndpoint:
 class TestConsumeEndpoint:
     """Tests for Pub/Sub consume endpoint."""
 
-    def test_consume_missing_auth_header(self, test_client):
+    def test_consume_missing_auth_header(self):
         """Test consume endpoint requires authorization header."""
+        # Don't use test_client fixture for auth tests
+        from app.main import app
+        client = TestClient(app)
+
         pubsub_message = {
             "message": {"data": "eyJ0ZXN0IjogInRlc3QifQ=="},
             "subscription": "test-subscription",
         }
 
-        response = test_client.post("/api/consume", json=pubsub_message)
+        response = client.post("/api/consume", json=pubsub_message)
 
         assert response.status_code == 401
 
-    def test_consume_invalid_auth_token(self, test_client):
+    def test_consume_invalid_auth_token(self):
         """Test consume endpoint rejects invalid token."""
+        # Don't use test_client fixture for auth tests
+        from app.main import app
+        client = TestClient(app)
+
         pubsub_message = {
             "message": {"data": "eyJ0ZXN0IjogInRlc3QifQ=="},
             "subscription": "test-subscription",
         }
 
-        response = test_client.post(
+        response = client.post(
             "/api/consume",
             json=pubsub_message,
             headers={"Authorization": "Bearer wrong-token"},
