@@ -108,7 +108,7 @@ class MockImageService:
         draw.text(
             ((width - text_width) // 2, height - 40),
             watermark,
-            fill=(255, 255, 255, 128),
+            fill=(255, 255, 255),  # RGB only (no alpha channel on RGB image)
             font=watermark_font,
         )
 
