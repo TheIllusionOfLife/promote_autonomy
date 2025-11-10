@@ -30,7 +30,7 @@ steps:
       - 'managed'
       - '--no-allow-unauthenticated'
       - '--set-env-vars'
-      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,STORAGE_BUCKET=$PROJECT_ID-assets,VIDEO_OUTPUT_GCS_BUCKET=gs://$PROJECT_ID-assets/veo-output'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,STORAGE_BUCKET=$PROJECT_ID-assets,VIDEO_OUTPUT_GCS_BUCKET=$PROJECT_ID-assets/veo-output'
       - '--memory'
       - '2Gi'
       - '--timeout'

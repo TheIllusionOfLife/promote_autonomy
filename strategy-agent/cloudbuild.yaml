@@ -16,6 +16,7 @@ steps:
       - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
   # Deploy container image to Cloud Run
+  # Note: FRONTEND_URL is set to placeholder and must be updated after frontend deployment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -28,9 +29,8 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=job-approvals,FRONTEND_URL=https://frontend-$PROJECT_NUMBER.$_DEPLOY_REGION.run.app'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=creative-tasks,FRONTEND_URL=https://placeholder-will-be-updated.run.app'
       - '--memory'
       - '1Gi'
       - '--timeout'
