@@ -80,21 +80,21 @@ class TestExtractUrlFromText:
 
     def test_extracts_url_with_colon_format(self):
         """Test extraction with key: value format."""
-        text = 'captions_url: https://storage.googleapis.com/bucket/file.json'
+        text = 'captions_url: https://storage.googleapis.com/test-bucket/file.json'
         result = _extract_url_from_text(text, "captions")
-        assert result == "https://storage.googleapis.com/bucket/file.json"
+        assert result == "https://storage.googleapis.com/test-bucket/file.json"
 
     def test_extracts_url_with_json_format(self):
         """Test extraction with JSON format."""
-        text = '"captions_url": "https://storage.googleapis.com/bucket/file.json"'
+        text = '"captions_url": "https://storage.googleapis.com/test-bucket/file.json"'
         result = _extract_url_from_text(text, "captions")
-        assert result == "https://storage.googleapis.com/bucket/file.json"
+        assert result == "https://storage.googleapis.com/test-bucket/file.json"
 
     def test_extracts_url_with_single_quotes(self):
         """Test extraction with single quotes."""
-        text = "'image_url': 'https://storage.googleapis.com/bucket/image.png'"
+        text = "'image_url': 'https://storage.googleapis.com/test-bucket/image.png'"
         result = _extract_url_from_text(text, "image")
-        assert result == "https://storage.googleapis.com/bucket/image.png"
+        assert result == "https://storage.googleapis.com/test-bucket/image.png"
 
     def test_returns_none_for_missing_url(self):
         """Test that None is returned when URL not found."""
@@ -112,11 +112,11 @@ class TestExtractUrlFromText:
     def test_handles_multiple_urls_returns_first(self):
         """Test extraction when multiple URLs present."""
         text = '''
-        captions_url: https://storage.googleapis.com/bucket/first.json
-        captions_url: https://storage.googleapis.com/bucket/second.json
+        captions_url: https://storage.googleapis.com/test-bucket/first.json
+        captions_url: https://storage.googleapis.com/test-bucket/second.json
         '''
         result = _extract_url_from_text(text, "captions")
-        assert result == "https://storage.googleapis.com/bucket/first.json"
+        assert result == "https://storage.googleapis.com/test-bucket/first.json"
 
 
 class TestGenerateAssetsWithAdkParsing:
@@ -148,10 +148,11 @@ class TestGenerateAssetsWithAdkParsing:
             captions=CaptionTaskConfig(n=3, style="engaging"),
         )
 
-        # Mock firestore service
+        # Mock firestore and storage services
         mock_firestore = AsyncMock()
+        mock_storage = AsyncMock()
 
-        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore)
+        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         assert "captions_url" in result
         assert result["captions_url"] == "https://storage.googleapis.com/bucket/captions.json"
@@ -165,9 +166,9 @@ class TestGenerateAssetsWithAdkParsing:
         mock_coordinator.run.return_value = '''
         Here are the generated assets:
         {
-            "captions_url": "https://storage.googleapis.com/bucket/captions.json",
-            "image_url": "https://storage.googleapis.com/bucket/image.png",
-            "video_url": "https://storage.googleapis.com/bucket/video.mp4"
+            "captions_url": "https://storage.googleapis.com/test-bucket/captions.json",
+            "image_url": "https://storage.googleapis.com/test-bucket/image.png",
+            "video_url": "https://storage.googleapis.com/test-bucket/video.mp4"
         }
         All assets generated successfully!
         '''
@@ -183,8 +184,9 @@ class TestGenerateAssetsWithAdkParsing:
             captions=CaptionTaskConfig(n=3, style="engaging"),
         )
         mock_firestore = AsyncMock()
+        mock_storage = AsyncMock()
 
-        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore)
+        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         assert len(result) == 3
         assert "captions_url" in result
@@ -200,7 +202,7 @@ class TestGenerateAssetsWithAdkParsing:
 
         ```json
         {
-            "captions_url": "https://storage.googleapis.com/bucket/captions.json"
+            "captions_url": "https://storage.googleapis.com/test-bucket/captions.json"
         }
         ```
         '''
@@ -216,8 +218,9 @@ class TestGenerateAssetsWithAdkParsing:
             captions=CaptionTaskConfig(n=3, style="professional"),
         )
         mock_firestore = AsyncMock()
+        mock_storage = AsyncMock()
 
-        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore)
+        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         assert "captions_url" in result
 
@@ -227,8 +230,8 @@ class TestGenerateAssetsWithAdkParsing:
         mock_coordinator = MagicMock()
         mock_coordinator.run.return_value = '''
         Generated assets successfully!
-        captions_url: https://storage.googleapis.com/bucket/captions.json
-        image_url: https://storage.googleapis.com/bucket/image.png
+        captions_url: https://storage.googleapis.com/test-bucket/captions.json
+        image_url: https://storage.googleapis.com/test-bucket/image.png
         '''
         mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
@@ -242,12 +245,13 @@ class TestGenerateAssetsWithAdkParsing:
             captions=CaptionTaskConfig(n=5, style="professional"),
         )
         mock_firestore = AsyncMock()
+        mock_storage = AsyncMock()
 
-        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore)
+        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         # Should fall back to regex extraction
         assert "captions_url" in result
-        assert result["captions_url"] == "https://storage.googleapis.com/bucket/captions.json"
+        assert result["captions_url"] == "https://storage.googleapis.com/test-bucket/captions.json"
 
     @pytest.mark.asyncio
     async def test_validates_storage_urls_only(self, mocker):
@@ -256,7 +260,7 @@ class TestGenerateAssetsWithAdkParsing:
         mock_coordinator.run.return_value = '''
         {
             "captions_url": "https://evil.com/malicious.json",
-            "image_url": "https://storage.googleapis.com/bucket/image.png"
+            "image_url": "https://storage.googleapis.com/test-bucket/image.png"
         }
         '''
         mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
@@ -271,10 +275,11 @@ class TestGenerateAssetsWithAdkParsing:
             captions=CaptionTaskConfig(n=3, style="engaging"),
         )
         mock_firestore = AsyncMock()
+        mock_storage = AsyncMock()
 
-        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore)
+        result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         # Only GCS URL should be extracted
         assert "captions_url" not in result  # evil.com rejected
         assert "image_url" in result  # GCS URL accepted
-        assert result["image_url"] == "https://storage.googleapis.com/bucket/image.png"
+        assert result["image_url"] == "https://storage.googleapis.com/test-bucket/image.png"
