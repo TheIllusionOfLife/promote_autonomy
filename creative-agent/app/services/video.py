@@ -95,7 +95,7 @@ class RealVeoVideoService:
 
     @staticmethod
     def _hex_to_color_name(hex_code: str) -> str:
-        """Convert hex code to approximate color name for natural language prompts.
+        """Convert hex code to approximate color name using HSV color model.
 
         Args:
             hex_code: 6-character hex code (e.g., '4D18C9', 'FF0000')
@@ -103,45 +103,59 @@ class RealVeoVideoService:
         Returns:
             Approximate color name (e.g., 'purple', 'red', 'blue')
         """
-        # Convert hex to RGB
-        r = int(hex_code[0:2], 16)
-        g = int(hex_code[2:4], 16)
-        b = int(hex_code[4:6], 16)
+        # Convert hex to RGB (0-1 range)
+        r = int(hex_code[0:2], 16) / 255.0
+        g = int(hex_code[2:4], 16) / 255.0
+        b = int(hex_code[4:6], 16) / 255.0
 
-        # Simple heuristic-based color naming
-        # Check for grayscale first
-        if abs(r - g) < 30 and abs(g - b) < 30 and abs(r - b) < 30:
-            if r < 50:
+        # Convert RGB to HSV
+        max_val = max(r, g, b)
+        min_val = min(r, g, b)
+        delta = max_val - min_val
+
+        # Value (brightness)
+        v = max_val
+
+        # Saturation
+        s = 0 if max_val == 0 else delta / max_val
+
+        # Hue (0-360 degrees)
+        if delta == 0:
+            h = 0.0  # Achromatic (gray)
+        elif max_val == r:
+            h = 60.0 * (((g - b) / delta) % 6)
+        elif max_val == g:
+            h = 60.0 * (((b - r) / delta) + 2)
+        else:  # max_val == b
+            h = 60.0 * (((r - g) / delta) + 4)
+
+        # Classify color based on HSV values
+        # Check for achromatic colors (low saturation)
+        if s < 0.15:
+            if v < 0.2:
                 return "black"
-            elif r > 200:
+            elif v > 0.8:
                 return "white"
             else:
                 return "gray"
 
-        # Find dominant channel
-        max_channel = max(r, g, b)
-        min_channel = min(r, g, b)
-
-        # Low saturation = gray
-        if max_channel - min_channel < 50:
-            return "gray"
-
-        # Determine hue-based color
-        if r == max_channel:
-            if g > b:
-                return "orange" if g > r * 0.6 else "red"
-            else:
-                return "pink" if b > r * 0.5 else "red"
-        elif g == max_channel:
-            if r > b:
-                return "yellow" if r > g * 0.7 else "green"
-            else:
-                return "cyan" if b > g * 0.7 else "green"
-        else:  # b == max_channel
-            if r > g:
-                return "purple" if r > b * 0.6 else "blue"
-            else:
-                return "blue"
+        # Chromatic colors based on hue
+        if h < 15 or h >= 345:
+            return "red"
+        elif h < 45:
+            return "orange"
+        elif h < 75:
+            return "yellow"
+        elif h < 150:
+            return "green"
+        elif h < 195:
+            return "cyan"
+        elif h < 255:
+            return "blue"
+        elif h < 285:
+            return "purple"
+        else:  # 285-345
+            return "pink"
 
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
@@ -215,10 +229,8 @@ class RealVeoVideoService:
                 )
                 # Use hex_code as source of truth, name is just a label
                 # Convert hex to approximate color name for natural language prompts
-                color_description = self._hex_to_color_name(primary_color.hex_code)
-                # If user provided a name, mention it for context
-                if primary_color.name:
-                    color_description = f"{primary_color.name} ({color_description})"
+                natural_color_name = self._hex_to_color_name(primary_color.hex_code)
+                color_description = f"{primary_color.name} ({natural_color_name})" if primary_color.name else natural_color_name
                 enhanced_prompt += f" Incorporate {color_description} tones as a prominent visual accent throughout."
 
         # Validate prompt length to prevent abuse and API errors

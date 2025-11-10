@@ -463,3 +463,81 @@ class TestVideoServiceFactory:
 
 # Note: TestVideoFileSizeWarning class removed as file size validation
 # is now handled in consume.py router to store warnings in Firestore.
+
+
+class TestHexToColorName:
+    """Tests for _hex_to_color_name() HSV-based color conversion."""
+
+    def test_grayscale_colors(self):
+        """Test conversion of grayscale colors (black, white, gray)."""
+        from app.services.video import RealVeoVideoService
+
+        # Black (very low value)
+        assert RealVeoVideoService._hex_to_color_name("000000") == "black"
+        assert RealVeoVideoService._hex_to_color_name("0A0A0A") == "black"
+
+        # White (very high value)
+        assert RealVeoVideoService._hex_to_color_name("FFFFFF") == "white"
+        assert RealVeoVideoService._hex_to_color_name("F0F0F0") == "white"
+
+        # Gray (medium value, low saturation)
+        assert RealVeoVideoService._hex_to_color_name("808080") == "gray"
+        assert RealVeoVideoService._hex_to_color_name("666666") == "gray"
+
+    def test_primary_colors(self):
+        """Test conversion of primary colors (red, green, blue)."""
+        from app.services.video import RealVeoVideoService
+
+        # Red (hue 0-15 or 345-360)
+        assert RealVeoVideoService._hex_to_color_name("FF0000") == "red"
+        assert RealVeoVideoService._hex_to_color_name("E60000") == "red"
+
+        # Green (hue 75-150)
+        assert RealVeoVideoService._hex_to_color_name("00FF00") == "green"
+        assert RealVeoVideoService._hex_to_color_name("00E600") == "green"
+
+        # Blue (hue 195-255)
+        assert RealVeoVideoService._hex_to_color_name("0000FF") == "blue"
+        assert RealVeoVideoService._hex_to_color_name("0000E6") == "blue"
+
+    def test_secondary_colors(self):
+        """Test conversion of secondary colors (orange, yellow, cyan, purple, pink)."""
+        from app.services.video import RealVeoVideoService
+
+        # Orange (hue 15-45)
+        assert RealVeoVideoService._hex_to_color_name("FF8000") == "orange"
+
+        # Yellow (hue 45-75)
+        assert RealVeoVideoService._hex_to_color_name("FFFF00") == "yellow"
+
+        # Cyan (hue 150-195)
+        assert RealVeoVideoService._hex_to_color_name("00FFFF") == "cyan"
+
+        # Purple (hue 255-285)
+        assert RealVeoVideoService._hex_to_color_name("8000FF") == "purple"
+        assert RealVeoVideoService._hex_to_color_name("4D18C9") == "purple"  # Example from PR
+
+        # Pink (hue 285-345)
+        assert RealVeoVideoService._hex_to_color_name("FF00FF") == "pink"
+
+    def test_edge_case_user_confusion(self):
+        """Test edge case: user picks black but names it 'Red' - should output 'Red (black)'."""
+        from app.services.video import RealVeoVideoService
+
+        # Hex code is black
+        natural_color_name = RealVeoVideoService._hex_to_color_name("000000")
+        assert natural_color_name == "black"
+
+        # User-provided name would be used in format: "Red (black)"
+        user_name = "Red"
+        color_description = f"{user_name} ({natural_color_name})" if user_name else natural_color_name
+        assert color_description == "Red (black)"
+
+    def test_lowercase_hex_codes(self):
+        """Test that lowercase hex codes work correctly."""
+        from app.services.video import RealVeoVideoService
+
+        # Lowercase should work same as uppercase
+        assert RealVeoVideoService._hex_to_color_name("ff0000") == "red"
+        assert RealVeoVideoService._hex_to_color_name("00ff00") == "green"
+        assert RealVeoVideoService._hex_to_color_name("0000ff") == "blue"
