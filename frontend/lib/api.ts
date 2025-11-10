@@ -19,7 +19,7 @@ function formatErrorDetail(detail: unknown): string {
   // If detail is an array of validation errors (FastAPI 422 format)
   if (Array.isArray(detail)) {
     return detail
-      .map((err: any) => {
+      .map((err: { loc?: (string | number)[]; msg?: string }) => {
         const field = err.loc?.slice(1).join('.') || 'field';
         const message = err.msg || 'validation error';
         return `${field}: ${message}`;
