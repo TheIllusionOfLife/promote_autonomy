@@ -1,5 +1,6 @@
 """Firestore service for job status updates."""
 
+from datetime import datetime, timezone
 from typing import Protocol
 
 from promote_autonomy_shared.schemas import Job, JobStatus
@@ -57,8 +58,6 @@ class MockFirestoreService:
         video_url: str | None = None,
     ) -> Job:
         """Update job in mock database."""
-        from datetime import datetime, timezone
-
         if event_id not in self.jobs:
             raise ValueError(f"Job {event_id} not found")
 
@@ -82,8 +81,6 @@ class MockFirestoreService:
         warning_message: str,
     ) -> Job:
         """Add warning to job in mock database."""
-        from datetime import datetime, timezone
-
         if event_id not in self.jobs:
             raise ValueError(f"Job {event_id} not found")
 
@@ -129,7 +126,6 @@ class RealFirestoreService:
         video_url: str | None = None,
     ) -> Job:
         """Update job status in Firestore."""
-        from datetime import datetime, timezone
         from google.cloud.firestore import ArrayUnion
 
         doc_ref = self.db.collection("jobs").document(event_id)
@@ -160,7 +156,6 @@ class RealFirestoreService:
         warning_message: str,
     ) -> Job:
         """Add warning to job in Firestore."""
-        from datetime import datetime, timezone
         from google.cloud.firestore import ArrayUnion
 
         doc_ref = self.db.collection("jobs").document(event_id)

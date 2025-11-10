@@ -307,9 +307,11 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
-                    {clientWarnings[0]}
-                  </p>
+                  {clientWarnings.map((warning, idx) => (
+                    <p key={idx} style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
+                      {warning}
+                    </p>
+                  ))}
                 </div>
               </div>
             </div>

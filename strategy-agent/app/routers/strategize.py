@@ -41,7 +41,7 @@ def _detect_aspect_ratio_conflicts(platforms: list[Platform]) -> list[str]:
             landscape.append(platform)
 
     # Check for conflicts between categories
-    used_categories = sum([len(portrait) > 0, len(square) > 0, len(landscape) > 0])
+    used_categories = sum(1 for category in [portrait, square, landscape] if category)
 
     if used_categories > 1:
         # Get the first platform (the one that will be used)

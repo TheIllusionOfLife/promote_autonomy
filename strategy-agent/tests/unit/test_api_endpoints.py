@@ -233,15 +233,10 @@ class TestStrategizeEndpoint:
         assert response.status_code == 200
         data = response.json()
 
-        # Should have no warnings (or warnings unrelated to aspect ratio)
+        # Should have no warnings for compatible platforms
         # Twitter and LinkedIn are both landscape (16:9 and 1.91:1 are close enough)
         assert "warnings" in data
-        # If there are warnings, they shouldn't be about major aspect ratio conflicts
-        if data["warnings"]:
-            warning_text = " ".join(data["warnings"]).lower()
-            # Should not have major aspect ratio conflict warnings
-            # (portrait vs landscape conflicts)
-            assert "portrait" not in warning_text and "square" not in warning_text
+        assert not data["warnings"], f"Expected no warnings for compatible platforms, but got: {data['warnings']}"
 
     def test_no_aspect_ratio_warning_single_platform(self, test_client, mock_user_id, sample_goal, auth_headers):
         """Test no warning for single platform (no conflicts possible)."""
@@ -257,12 +252,9 @@ class TestStrategizeEndpoint:
         assert response.status_code == 200
         data = response.json()
 
-        # Should have no aspect ratio conflict warnings for single platform
+        # Should have no warnings for single platform (no conflicts possible)
         assert "warnings" in data
-        if data["warnings"]:
-            warning_text = " ".join(data["warnings"]).lower()
-            # Should not mention aspect ratio conflicts (both terms together)
-            assert not ("aspect ratio" in warning_text and "conflict" in warning_text)
+        assert not data["warnings"], f"Expected no warnings for a single platform, but got: {data['warnings']}"
 
 
 @pytest.mark.unit
