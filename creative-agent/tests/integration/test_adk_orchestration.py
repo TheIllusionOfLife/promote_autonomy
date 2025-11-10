@@ -106,9 +106,8 @@ class TestExtractUrlFromText:
         """Test that only GCS URLs are extracted."""
         text = 'captions_url: https://example.com/file.json'
         result = _extract_url_from_text(text, "captions")
-        # This should return the URL even if it's not GCS
-        # (the regex doesn't validate domain, just looks for https://)
-        assert result == "https://example.com/file.json"
+        # Non-GCS URLs should be rejected by _validate_gcs_url
+        assert result is None
 
     def test_handles_multiple_urls_returns_first(self):
         """Test extraction when multiple URLs present."""
@@ -134,7 +133,8 @@ class TestGenerateAssetsWithAdkParsing:
             "image_url": "https://storage.googleapis.com/bucket/image.png"
         }
         '''
-        mocker.patch("app.routers.consume.get_creative_coordinator", return_value=mock_coordinator)
+        # Patch where the function is imported in consume.py
+        mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
         # Mock asyncio.to_thread to return the result directly
         async def mock_to_thread(func, *args):
@@ -171,7 +171,7 @@ class TestGenerateAssetsWithAdkParsing:
         }
         All assets generated successfully!
         '''
-        mocker.patch("app.routers.consume.get_creative_coordinator", return_value=mock_coordinator)
+        mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
         async def mock_to_thread(func, *args):
             return func(*args)
@@ -204,7 +204,7 @@ class TestGenerateAssetsWithAdkParsing:
         }
         ```
         '''
-        mocker.patch("app.routers.consume.get_creative_coordinator", return_value=mock_coordinator)
+        mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
         async def mock_to_thread(func, *args):
             return func(*args)
@@ -230,7 +230,7 @@ class TestGenerateAssetsWithAdkParsing:
         captions_url: https://storage.googleapis.com/bucket/captions.json
         image_url: https://storage.googleapis.com/bucket/image.png
         '''
-        mocker.patch("app.routers.consume.get_creative_coordinator", return_value=mock_coordinator)
+        mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
         async def mock_to_thread(func, *args):
             return func(*args)
@@ -259,7 +259,7 @@ class TestGenerateAssetsWithAdkParsing:
             "image_url": "https://storage.googleapis.com/bucket/image.png"
         }
         '''
-        mocker.patch("app.routers.consume.get_creative_coordinator", return_value=mock_coordinator)
+        mocker.patch("app.agents.coordinator.get_creative_coordinator", return_value=mock_coordinator)
 
         async def mock_to_thread(func, *args):
             return func(*args)
