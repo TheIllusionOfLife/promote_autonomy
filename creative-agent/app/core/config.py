@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,9 +10,9 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Google Cloud Configuration
-    PROJECT_ID: str
+    PROJECT_ID: str = "test-project"  # Default for testing
     LOCATION: str = "asia-northeast1"
-    STORAGE_BUCKET: str
+    STORAGE_BUCKET: str = "test-bucket"  # Default for testing
 
     # Firebase Configuration
     FIREBASE_CREDENTIALS_PATH: str = ""  # Empty = use ADC (Cloud Run default)
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
 
     # Pub/Sub Configuration (deprecated - now using OIDC)
     PUBSUB_SECRET_TOKEN: str = ""  # Optional, no longer used with OIDC auth
+    PUBSUB_SERVICE_ACCOUNT: str = "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com"  # Expected service account for OIDC verification
 
     # Mock Mode Flags
     USE_MOCK_GEMINI: bool = False  # For copy.py and video.py
@@ -35,6 +37,15 @@ class Settings(BaseSettings):
     USE_MOCK_VEO: bool = False      # For video.py (if using Veo for actual videos)
     USE_MOCK_FIRESTORE: bool = False
     USE_MOCK_STORAGE: bool = False
+
+    # ADK Integration Flags
+    USE_ADK_ORCHESTRATION: bool = False  # Use ADK for agent orchestration (experimental)
+    ADK_ROLLOUT_PERCENTAGE: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Percentage of jobs to use ADK orchestration (0-100)"
+    )
 
     # Server Configuration
     PORT: int = 8001

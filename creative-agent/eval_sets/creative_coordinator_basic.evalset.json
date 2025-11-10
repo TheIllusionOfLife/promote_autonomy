@@ -1,0 +1,33 @@
+{
+  "name": "Creative Coordinator - Basic Scenarios",
+  "description": "Test cases for basic asset generation scenarios",
+  "test_cases": [
+    {
+      "name": "Instagram campaign with captions only",
+      "input": "Generate 5 engaging captions for Instagram about a new coffee product",
+      "expected_contains": [
+        "captions_url",
+        "storage.googleapis.com"
+      ]
+    },
+    {
+      "name": "Twitter campaign with image",
+      "input": "Create Twitter campaign for tech product launch with image",
+      "expected_contains": [
+        "captions_url",
+        "image_url",
+        "storage.googleapis.com"
+      ]
+    },
+    {
+      "name": "Full campaign with video",
+      "input": "Generate complete campaign for new fitness app: captions, image, and video",
+      "expected_contains": [
+        "captions_url",
+        "image_url",
+        "video_url",
+        "storage.googleapis.com"
+      ]
+    }
+  ]
+}
