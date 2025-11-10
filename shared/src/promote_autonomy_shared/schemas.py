@@ -131,6 +131,14 @@ class ImageTaskConfig(BaseModel):
         default="1024x1024",
         description="Image size (e.g., '1024x1024', '1024x1792')",
     )
+    aspect_ratio: Optional[str] = Field(
+        default=None,
+        description="Target aspect ratio (e.g., '1:1', '16:9', '9:16')",
+    )
+    max_file_size_mb: Optional[float] = Field(
+        default=None,
+        description="Maximum file size in megabytes",
+    )
 
     @field_validator("size")
     @classmethod
@@ -160,8 +168,16 @@ class VideoTaskConfig(BaseModel):
     duration_sec: int = Field(
         default=15,
         ge=4,
-        le=60,
-        description="Video duration in seconds (VEO 3.0 supports 4, 6, or 8 seconds)",
+        le=600,
+        description="Video duration in seconds (platform limits vary: Instagram Story 15s, Twitter 140s, LinkedIn 600s)",
+    )
+    aspect_ratio: Optional[str] = Field(
+        default=None,
+        description="Target aspect ratio (e.g., '16:9', '9:16', '1:1')",
+    )
+    max_file_size_mb: Optional[float] = Field(
+        default=None,
+        description="Maximum file size in megabytes",
     )
 
 

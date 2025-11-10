@@ -192,6 +192,39 @@ class TestImageTaskConfig:
         )
         assert config.prompt == "Modern blue promo visual"
         assert config.size == "1024x1024"
+        assert config.aspect_ratio is None
+        assert config.max_file_size_mb is None
+
+    def test_image_config_with_aspect_ratio(self):
+        """Test image config with aspect ratio specified."""
+        config = ImageTaskConfig(
+            prompt="Test",
+            size="1080x1920",
+            aspect_ratio="9:16",
+        )
+        assert config.size == "1080x1920"
+        assert config.aspect_ratio == "9:16"
+
+    def test_image_config_with_file_size_limit(self):
+        """Test image config with file size limit."""
+        config = ImageTaskConfig(
+            prompt="Test",
+            size="1200x675",
+            max_file_size_mb=5.0,
+        )
+        assert config.max_file_size_mb == 5.0
+
+    def test_image_config_with_all_platform_fields(self):
+        """Test image config with all platform-specific fields."""
+        config = ImageTaskConfig(
+            prompt="Instagram Story visual",
+            size="1080x1920",
+            aspect_ratio="9:16",
+            max_file_size_mb=4.0,
+        )
+        assert config.size == "1080x1920"
+        assert config.aspect_ratio == "9:16"
+        assert config.max_file_size_mb == 4.0
 
     def test_image_config_default_size(self):
         """Test default size value."""
@@ -247,6 +280,39 @@ class TestVideoTaskConfig:
         )
         assert config.prompt == "Product demo video"
         assert config.duration_sec == 30
+        assert config.aspect_ratio is None
+        assert config.max_file_size_mb is None
+
+    def test_video_config_with_aspect_ratio(self):
+        """Test video config with aspect ratio specified."""
+        config = VideoTaskConfig(
+            prompt="Test",
+            duration_sec=15,
+            aspect_ratio="9:16",
+        )
+        assert config.duration_sec == 15
+        assert config.aspect_ratio == "9:16"
+
+    def test_video_config_with_file_size_limit(self):
+        """Test video config with file size limit."""
+        config = VideoTaskConfig(
+            prompt="Test",
+            duration_sec=60,
+            max_file_size_mb=512.0,
+        )
+        assert config.max_file_size_mb == 512.0
+
+    def test_video_config_with_all_platform_fields(self):
+        """Test video config with all platform-specific fields."""
+        config = VideoTaskConfig(
+            prompt="Twitter video ad",
+            duration_sec=140,
+            aspect_ratio="16:9",
+            max_file_size_mb=512.0,
+        )
+        assert config.duration_sec == 140
+        assert config.aspect_ratio == "16:9"
+        assert config.max_file_size_mb == 512.0
 
     def test_video_config_defaults(self):
         """Test default duration value."""
@@ -259,9 +325,9 @@ class TestVideoTaskConfig:
             VideoTaskConfig(prompt="Test", duration_sec=3)
 
     def test_video_config_validation_max(self):
-        """Test validation rejects duration > 60."""
+        """Test validation rejects duration > 600."""
         with pytest.raises(ValidationError):
-            VideoTaskConfig(prompt="Test", duration_sec=61)
+            VideoTaskConfig(prompt="Test", duration_sec=601)
 
 
 class TestTaskList:
