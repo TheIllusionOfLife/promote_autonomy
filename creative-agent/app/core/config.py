@@ -10,9 +10,9 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Google Cloud Configuration
-    PROJECT_ID: str
+    PROJECT_ID: str = "test-project"  # Default for testing
     LOCATION: str = "asia-northeast1"
-    STORAGE_BUCKET: str
+    STORAGE_BUCKET: str = "test-bucket"  # Default for testing
 
     # Firebase Configuration
     FIREBASE_CREDENTIALS_PATH: str = ""  # Empty = use ADC (Cloud Run default)

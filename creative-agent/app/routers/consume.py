@@ -124,8 +124,8 @@ def _extract_url_from_text(text: str, asset_type: str) -> str | None:
     """
     # Look for patterns like "captions_url: https://..." or "captions_url": "https://..."
     patterns = [
-        f'{asset_type}_url["\']?:\s*["\']?(https://storage\\.googleapis\\.com[^\\s"\']+)',
-        f'{asset_type}_url["\']?\\s*=\\s*["\']?(https://storage\\.googleapis\\.com[^\\s"\']+)',
+        rf'{asset_type}_url["\']?:\s*["\']?(https://storage\.googleapis\.com[^\s"\']+)',
+        rf'{asset_type}_url["\']?\\s*=\s*["\']?(https://storage\.googleapis\.com[^\s"\']+)',
     ]
 
     for pattern in patterns:
