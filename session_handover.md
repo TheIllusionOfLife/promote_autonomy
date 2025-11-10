@@ -101,17 +101,17 @@
 ### Acknowledged Limitations (Not Blocking)
 These were reviewed and accepted as future enhancements:
 
-1. **Environment Variable Mutation** (video.py:87-89)
+1. **Environment Variable Mutation** (video.py:104-106)
    - Required by google-genai SDK for Vertex AI mode
    - No alternative configuration method available
    - Documented and working correctly
 
-2. **Hardcoded Aspect Ratio** (video.py:144)
+2. **Hardcoded Aspect Ratio** (video.py:146)
    - Currently fixed at 16:9 for all videos
    - Will be addressed in Platform-Specific Configuration (Task #2 above)
    - Part of larger feature, not a standalone fix
 
-3. **Fixed Polling Interval** (video.py:186)
+3. **Fixed Polling Interval** (video.py:188)
    - Currently 15 seconds for all VEO operations
    - Works correctly, just not optimal
    - Future optimization: exponential backoff
@@ -188,7 +188,7 @@ These were reviewed and accepted as future enhancements:
 **Pending Work:** None
 
 **Test Status:**
-- creative-agent: 14/14 tests passing (video service)
+- creative-agent: 14/14 tests passing (video service), 38/38 total tests passing
 - All tests optimized (1.25s execution time)
 
 **Next Steps:**
