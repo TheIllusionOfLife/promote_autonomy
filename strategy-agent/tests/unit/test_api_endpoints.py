@@ -34,7 +34,11 @@ class TestStrategizeEndpoint:
         """Test successful strategy generation."""
         response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": mock_user_id},
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_feed", "twitter"],
+                "uid": mock_user_id
+            },
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -42,6 +46,75 @@ class TestStrategizeEndpoint:
         assert "event_id" in data
         assert data["status"] == JobStatus.PENDING_APPROVAL
         assert "message" in data
+        assert data["task_list"]["target_platforms"] == ["instagram_feed", "twitter"]
+
+    def test_strategize_requires_platforms(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test that target_platforms is required."""
+        response = test_client.post(
+            "/api/strategize",
+            json={"goal": sample_goal, "uid": mock_user_id},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_strategize_requires_at_least_one_platform(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test that at least one platform must be selected."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": [],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_strategize_single_platform(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test strategy generation for single platform."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_story"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        task_list = data["task_list"]
+
+        # Should have platform-specific configurations
+        if task_list.get("image"):
+            assert task_list["image"]["aspect_ratio"] == "9:16"
+            assert task_list["image"]["max_file_size_mb"] == 4.0
+
+        if task_list.get("video"):
+            assert task_list["video"]["aspect_ratio"] == "9:16"
+            assert task_list["video"]["duration_sec"] <= 15
+            assert task_list["video"]["max_file_size_mb"] == 4.0
+
+    def test_strategize_multiple_platforms(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test strategy generation for multiple platforms uses most restrictive constraints."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_story", "twitter", "linkedin"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        task_list = data["task_list"]
+
+        # Most restrictive video duration (Instagram Story: 15s)
+        if task_list.get("video"):
+            assert task_list["video"]["duration_sec"] <= 15
+            # Most restrictive file size (Instagram Story: 4MB)
+            assert task_list["video"]["max_file_size_mb"] == 4.0
 
     def test_strategize_validates_goal_length(self, test_client, mock_user_id):
         """Test goal validation rejects too short goals."""
@@ -64,7 +137,7 @@ class TestStrategizeEndpoint:
         """Test that uid is required."""
         response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal},
+            json={"goal": sample_goal, "target_platforms": ["twitter"]},
             headers=auth_headers,
         )
         assert response.status_code == 422  # Validation error
@@ -73,7 +146,7 @@ class TestStrategizeEndpoint:
         """Test that authorization header is required."""
         response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": mock_user_id},
+            json={"goal": sample_goal, "target_platforms": ["twitter"], "uid": mock_user_id},
         )
         assert response.status_code == 401
 
@@ -81,7 +154,7 @@ class TestStrategizeEndpoint:
         """Test that token uid must match request uid."""
         response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": "different_user"},
+            json={"goal": sample_goal, "target_platforms": ["twitter"], "uid": "different_user"},
             headers={"Authorization": "Bearer test_user_123"},
         )
         assert response.status_code == 403
@@ -96,7 +169,7 @@ class TestApproveEndpoint:
         # First create a job
         create_response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": mock_user_id},
+            json={"goal": sample_goal, "target_platforms": ["twitter"], "uid": mock_user_id},
             headers=auth_headers,
         )
         assert create_response.status_code == 200
@@ -130,7 +203,7 @@ class TestApproveEndpoint:
         # Create and approve a job
         create_response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": mock_user_id},
+            json={"goal": sample_goal, "target_platforms": ["twitter"], "uid": mock_user_id},
             headers=auth_headers,
         )
         event_id = create_response.json()["event_id"]
@@ -154,7 +227,7 @@ class TestApproveEndpoint:
         # Create job with one user
         create_response = test_client.post(
             "/api/strategize",
-            json={"goal": sample_goal, "uid": mock_user_id},
+            json={"goal": sample_goal, "target_platforms": ["twitter"], "uid": mock_user_id},
             headers=auth_headers,
         )
         event_id = create_response.json()["event_id"]
