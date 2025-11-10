@@ -86,6 +86,14 @@ class RealVeoVideoService:
                 "Example: gs://your-bucket/veo-output"
             )
 
+        # Warn if location is not us-central1 (VEO 3.0 requirement)
+        if settings.LOCATION != "us-central1":
+            logger.warning(
+                f"VEO 3.0 is only available in us-central1. "
+                f"Current LOCATION is '{settings.LOCATION}'. "
+                f"Video generation will fail unless LOCATION is changed to us-central1."
+            )
+
         try:
             from google import genai
             from google.cloud import storage
