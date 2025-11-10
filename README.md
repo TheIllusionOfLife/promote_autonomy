@@ -1,6 +1,6 @@
 # Promote Autonomy
 
-Multi-agent marketing automation system built with **Google Agent Development Kit (ADK)** and deployed on **Cloud Run**.
+Multi-agent marketing automation system built with **Google Agent Development Kit (ADK)** and deployed on **Cloud Run**.  
 **[🚀 Try Live Demo](https://frontend-luwcxjaugq-an.a.run.app)** | **[📊 Architecture Diagram](./architecture-diagram.svg)** | **[📖 Full Documentation](./ARCHITECTURE.md)**
 
 ## Overview
