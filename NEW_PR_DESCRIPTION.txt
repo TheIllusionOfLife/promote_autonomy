@@ -1,0 +1,91 @@
+# Hackathon Submission Documentation: Architecture Diagram & Blog Post
+
+## Overview
+
+This PR adds comprehensive documentation for the Cloud Run Hackathon submission in the **AI Agents Category**. It includes the **required architecture diagram** and an **optional blog post** for bonus points.
+
+## What's Included
+
+### 1. Architecture Diagram (REQUIRED for submission) ✅
+- **`architecture-diagram.svg`** - Professional, color-coded architecture diagram showing:
+  - All 3 Cloud Run services (Frontend, Strategy Agent, Creative Agent)
+  - ADK multi-agent coordinator with 3 specialized sub-agents
+  - Data flow with numbered steps
+  - HITL workflow visualization
+  - Google Cloud services (Firestore, Pub/Sub, Storage)
+  - Vertex AI models (Gemini, Imagen, Veo)
+  - Color-coded legend using official Google Cloud colors
+
+### 2. Architecture Documentation ✅
+- **`ARCHITECTURE.md`** - Comprehensive technical documentation with:
+  - Mermaid diagram (renders in GitHub)
+  - Step-by-step data flow explanation
+  - Component descriptions
+  - Security features
+  - Technology stack
+
+### 3. Hackathon Submission Checklist ✅
+- **`HACKATHON_SUBMISSION_CHECKLIST.md`** - Complete submission guide with:
+  - Everything already completed
+  - Critical missing items (demo video, PNG conversion)
+  - Time estimates for remaining work
+  - Devpost submission template
+  - Judging criteria self-assessment
+
+### 4. Blog Post (+0.4 bonus points) ✅
+- **`BLOG_POST.md`** - 3,200-word technical deep-dive covering:
+  - Architecture overview
+  - ADK integration with code examples
+  - Technical challenges and solutions
+  - **Includes required hackathon statement**
+
+### 5. Supporting Documentation ✅
+- **`BLOG_PUBLISHING_GUIDE.md`** - Publishing instructions
+- **`generate-diagram-png.sh`** - PNG conversion script
+- **`docs/create-architecture-diagram.md`** - Diagram creation guide
+
+## PR Review Fixes Applied
+
+### Fixed ✅
+1. ✅ Bash script input validation
+2. ✅ Improved error handling (set -euo pipefail)
+3. ✅ Absolute path → relative path
+4. ✅ Bare URLs → proper Markdown links (MD034)
+
+### Rejected (Reviewer Errors) ❌
+1. ❌ Date is correct (2025, not 2024)
+2. ❌ SVG is complete (verified with xmllint)
+3. ❌ List indentation is proper nested syntax
+
+## Hackathon Submission Status
+
+### ✅ Completed
+- [x] Google ADK integration
+- [x] 3 Cloud Run services deployed
+- [x] Live demo URL
+- [x] **Architecture diagram (THIS PR)**
+- [x] **Blog post (THIS PR)** - +0.4 points
+- [x] Multiple AI models - +0.4 points
+- [x] Multiple services - +0.4 points
+
+### ❌ Still Needed
+- [ ] Demo video (3 min, required)
+- [ ] PNG conversion (5 min)
+- [ ] Social media post (+0.4 points)
+
+## Files Changed
+
+- **New**: 7 files
+- **Modified**: 1 file (README.md)
+- **Total**: ~1,900 lines of documentation
+
+## Next Steps After Merge
+
+1. Create demo video (CRITICAL)
+2. Convert SVG to PNG
+3. Publish blog post
+4. Submit to Devpost
+
+---
+
+**This PR makes the submission 90% complete.** Only the demo video remains as a critical blocker.
