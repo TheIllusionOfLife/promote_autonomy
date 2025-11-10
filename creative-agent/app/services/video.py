@@ -1,6 +1,7 @@
 """Video generation service."""
 
 import asyncio
+import logging
 import time
 import struct
 from typing import Protocol
@@ -8,6 +9,8 @@ from typing import Protocol
 from promote_autonomy_shared.schemas import VideoTaskConfig
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class VideoService(Protocol):
@@ -44,7 +47,8 @@ class MockVideoService:
 
         # moov box (movie metadata) - container for track info
         # For mock, we'll create a minimal moov box structure
-        mvhd_data = b"\x00" * 100  # Minimal movie header
+        # Minimal 100-byte movie header (sufficient for MP4 parsers to recognize structure)
+        mvhd_data = b"\x00" * 100
         mvhd_size = len(mvhd_data) + 8
         mvhd_box = struct.pack(">I", mvhd_size) + b"mvhd" + mvhd_data
 
@@ -124,6 +128,12 @@ class RealVeoVideoService:
             duration = 6
         else:
             duration = 8
+
+        if duration != config.duration_sec:
+            logger.info(
+                f"Mapping requested duration {config.duration_sec}s to VEO-supported {duration}s "
+                f"(VEO 3.0 only supports 4, 6, or 8 seconds)"
+            )
 
         # Prepare GCS output URI
         if not settings.VIDEO_OUTPUT_GCS_BUCKET:
@@ -209,12 +219,13 @@ class RealVeoVideoService:
         object_path = parts[1]
 
         # Download from GCS
-        bucket = self.storage_client.bucket(bucket_name)
-        blob = bucket.blob(object_path)
-
-        video_bytes = await asyncio.to_thread(blob.download_as_bytes)
-
-        return video_bytes
+        try:
+            bucket = self.storage_client.bucket(bucket_name)
+            blob = bucket.blob(object_path)
+            video_bytes = await asyncio.to_thread(blob.download_as_bytes)
+            return video_bytes
+        except Exception as e:
+            raise RuntimeError(f"Failed to download video from {gcs_uri}: {e}") from e
 
 
 # Service instance management (singleton pattern)

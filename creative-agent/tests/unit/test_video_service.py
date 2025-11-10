@@ -320,11 +320,77 @@ class TestGCSDownload:
                 ]
 
                 for uri, expected_bucket, expected_path in test_cases:
+                    # Reset mocks for each iteration
+                    mock_storage_client.bucket.reset_mock()
+                    mock_bucket.blob.reset_mock()
+
                     await service._download_from_gcs(uri)
 
-                    # Verify bucket and blob path extraction
-                    assert mock_storage_client.bucket.call_args[0][0] == expected_bucket
-                    assert mock_bucket.blob.call_args[0][0] == expected_path
+                    # Verify bucket and blob path extraction for this specific call
+                    mock_storage_client.bucket.assert_called_once_with(expected_bucket)
+                    mock_bucket.blob.assert_called_once_with(expected_path)
+
+    @pytest.mark.asyncio
+    async def test_download_from_gcs_invalid_uri_formats(self):
+        """Test GCS download fails gracefully with invalid URI formats."""
+        from app.services.video import RealVeoVideoService
+
+        # Mock google.cloud.storage module
+        mock_storage_module = Mock()
+        mock_genai = Mock()
+
+        with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
+            with patch("app.core.config.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_get_settings.return_value = mock_settings
+
+                service = RealVeoVideoService()
+
+                # Test various invalid URI formats
+                invalid_uris = [
+                    ("http://bucket/path/file.mp4", "Invalid GCS URI format"),
+                    ("gs://", "Invalid GCS URI format"),
+                    ("gs://bucket-only", "Invalid GCS URI format"),
+                    ("/local/path/file.mp4", "Invalid GCS URI format"),
+                    ("bucket/file.mp4", "Invalid GCS URI format"),
+                ]
+
+                for invalid_uri, expected_error in invalid_uris:
+                    with pytest.raises(ValueError, match=expected_error):
+                        await service._download_from_gcs(invalid_uri)
+
+    @pytest.mark.asyncio
+    async def test_download_from_gcs_download_failure(self):
+        """Test GCS download handles network/permission errors."""
+        from app.services.video import RealVeoVideoService
+
+        # Mock google.cloud.storage module
+        mock_storage_module = Mock()
+        mock_blob = Mock()
+        mock_blob.download_as_bytes = Mock(side_effect=Exception("Network error"))
+
+        mock_bucket = Mock()
+        mock_bucket.blob = Mock(return_value=mock_blob)
+
+        mock_storage_client = Mock()
+        mock_storage_client.bucket = Mock(return_value=mock_bucket)
+        mock_storage_module.Client = Mock(return_value=mock_storage_client)
+
+        mock_genai = Mock()
+
+        with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
+            with patch("app.core.config.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_get_settings.return_value = mock_settings
+
+                service = RealVeoVideoService()
+
+                with pytest.raises(RuntimeError, match="Failed to download video from gs://test-bucket/video.mp4"):
+                    await service._download_from_gcs("gs://test-bucket/video.mp4")
 
 
 class TestVideoServiceFactory:
