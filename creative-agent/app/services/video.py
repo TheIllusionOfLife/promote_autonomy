@@ -160,13 +160,7 @@ class RealVeoVideoService:
                 f"(VEO 3.0 only supports 4, 6, or 8 seconds)"
             )
 
-        # Prepare GCS output URI
-        if not settings.VIDEO_OUTPUT_GCS_BUCKET:
-            raise ValueError(
-                "VIDEO_OUTPUT_GCS_BUCKET must be configured for Veo video generation. "
-                "Example: gs://your-bucket/veo-output"
-            )
-
+        # Use GCS output URI from settings (validated in __init__)
         output_gcs_uri = settings.VIDEO_OUTPUT_GCS_BUCKET
 
         # Start video generation operation
