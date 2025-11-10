@@ -65,6 +65,9 @@ class MockStorageService:
     ) -> str:
         """Upload reference image to mock storage.
 
+        SECURITY NOTE: Reference images are made publicly accessible for Gemini Vision API.
+        Users should only upload non-sensitive product images suitable for public marketing use.
+
         Args:
             event_id: Event ID for organizing files
             content: Image file content (already read)
@@ -147,6 +150,10 @@ class RealStorageService:
         self, event_id: str, content: bytes, content_type: str
     ) -> str:
         """Upload reference product image to Cloud Storage.
+
+        SECURITY NOTE: Reference images are made publicly accessible for Gemini Vision API.
+        Users should only upload non-sensitive product images suitable for public marketing use.
+        Do not upload proprietary or confidential product photos.
 
         Args:
             event_id: Event ID for organizing files
