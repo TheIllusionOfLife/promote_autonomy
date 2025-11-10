@@ -8,9 +8,151 @@ from promote_autonomy_shared.schemas import (
     ImageTaskConfig,
     Job,
     JobStatus,
+    Platform,
+    PlatformSpec,
+    PLATFORM_SPECS,
     TaskList,
     VideoTaskConfig,
 )
+
+
+class TestPlatform:
+    """Tests for Platform enum."""
+
+    def test_platform_enum_values(self):
+        """Test all platform enum values exist."""
+        assert Platform.INSTAGRAM_FEED == "instagram_feed"
+        assert Platform.INSTAGRAM_STORY == "instagram_story"
+        assert Platform.TWITTER == "twitter"
+        assert Platform.FACEBOOK == "facebook"
+        assert Platform.LINKEDIN == "linkedin"
+        assert Platform.YOUTUBE == "youtube"
+
+    def test_platform_from_string(self):
+        """Test creating Platform from string."""
+        platform = Platform("instagram_feed")
+        assert platform == Platform.INSTAGRAM_FEED
+
+    def test_platform_invalid_value(self):
+        """Test invalid platform value raises error."""
+        with pytest.raises(ValueError):
+            Platform("tiktok")
+
+
+class TestPlatformSpec:
+    """Tests for PlatformSpec model."""
+
+    def test_valid_platform_spec(self):
+        """Test creating valid platform spec."""
+        spec = PlatformSpec(
+            platform=Platform.INSTAGRAM_FEED,
+            image_size="1080x1080",
+            image_aspect_ratio="1:1",
+            max_image_size_mb=4.0,
+            video_size="1080x1080",
+            video_aspect_ratio="1:1",
+            max_video_length_sec=60,
+            max_video_size_mb=4.0,
+            caption_max_length=2200,
+        )
+        assert spec.platform == Platform.INSTAGRAM_FEED
+        assert spec.image_size == "1080x1080"
+        assert spec.image_aspect_ratio == "1:1"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_aspect_ratio == "1:1"
+        assert spec.max_video_length_sec == 60
+
+    def test_platform_spec_requires_all_fields(self):
+        """Test that all fields are required."""
+        with pytest.raises(ValidationError):
+            PlatformSpec(platform=Platform.INSTAGRAM_FEED)  # type: ignore
+
+
+class TestPlatformSpecs:
+    """Tests for PLATFORM_SPECS constant."""
+
+    def test_all_platforms_have_specs(self):
+        """Test that all platforms have specifications defined."""
+        for platform in Platform:
+            assert platform in PLATFORM_SPECS, f"Missing spec for {platform}"
+
+    def test_instagram_feed_spec(self):
+        """Test Instagram Feed specifications."""
+        spec = PLATFORM_SPECS[Platform.INSTAGRAM_FEED]
+        assert spec.platform == Platform.INSTAGRAM_FEED
+        assert spec.image_size == "1080x1080"
+        assert spec.image_aspect_ratio == "1:1"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_size == "1080x1080"
+        assert spec.video_aspect_ratio == "1:1"
+        assert spec.max_video_length_sec == 60
+        assert spec.max_video_size_mb == 4.0
+        assert spec.caption_max_length == 2200
+
+    def test_instagram_story_spec(self):
+        """Test Instagram Story specifications."""
+        spec = PLATFORM_SPECS[Platform.INSTAGRAM_STORY]
+        assert spec.platform == Platform.INSTAGRAM_STORY
+        assert spec.image_size == "1080x1920"
+        assert spec.image_aspect_ratio == "9:16"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_size == "1080x1920"
+        assert spec.video_aspect_ratio == "9:16"
+        assert spec.max_video_length_sec == 15
+        assert spec.max_video_size_mb == 4.0
+        assert spec.caption_max_length == 2200
+
+    def test_twitter_spec(self):
+        """Test Twitter specifications."""
+        spec = PLATFORM_SPECS[Platform.TWITTER]
+        assert spec.platform == Platform.TWITTER
+        assert spec.image_size == "1200x675"
+        assert spec.image_aspect_ratio == "16:9"
+        assert spec.max_image_size_mb == 5.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 140
+        assert spec.max_video_size_mb == 512.0
+        assert spec.caption_max_length == 280
+
+    def test_facebook_spec(self):
+        """Test Facebook specifications."""
+        spec = PLATFORM_SPECS[Platform.FACEBOOK]
+        assert spec.platform == Platform.FACEBOOK
+        assert spec.image_size == "1200x630"
+        assert spec.image_aspect_ratio == "1.91:1"
+        assert spec.max_image_size_mb == 8.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 240
+        assert spec.max_video_size_mb == 4096.0
+        assert spec.caption_max_length == 63206
+
+    def test_linkedin_spec(self):
+        """Test LinkedIn specifications."""
+        spec = PLATFORM_SPECS[Platform.LINKEDIN]
+        assert spec.platform == Platform.LINKEDIN
+        assert spec.image_size == "1200x627"
+        assert spec.image_aspect_ratio == "1.91:1"
+        assert spec.max_image_size_mb == 5.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 600
+        assert spec.max_video_size_mb == 5120.0
+        assert spec.caption_max_length == 3000
+
+    def test_youtube_spec(self):
+        """Test YouTube specifications."""
+        spec = PLATFORM_SPECS[Platform.YOUTUBE]
+        assert spec.platform == Platform.YOUTUBE
+        assert spec.image_size == "1280x720"
+        assert spec.image_aspect_ratio == "16:9"
+        assert spec.max_image_size_mb == 2.0
+        assert spec.video_size == "1920x1080"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 60
+        assert spec.max_video_size_mb == 256.0
+        assert spec.caption_max_length == 5000
 
 
 class TestCaptionTaskConfig:
@@ -50,6 +192,39 @@ class TestImageTaskConfig:
         )
         assert config.prompt == "Modern blue promo visual"
         assert config.size == "1024x1024"
+        assert config.aspect_ratio is None
+        assert config.max_file_size_mb is None
+
+    def test_image_config_with_aspect_ratio(self):
+        """Test image config with aspect ratio specified."""
+        config = ImageTaskConfig(
+            prompt="Test",
+            size="1080x1920",
+            aspect_ratio="9:16",
+        )
+        assert config.size == "1080x1920"
+        assert config.aspect_ratio == "9:16"
+
+    def test_image_config_with_file_size_limit(self):
+        """Test image config with file size limit."""
+        config = ImageTaskConfig(
+            prompt="Test",
+            size="1200x675",
+            max_file_size_mb=5.0,
+        )
+        assert config.max_file_size_mb == 5.0
+
+    def test_image_config_with_all_platform_fields(self):
+        """Test image config with all platform-specific fields."""
+        config = ImageTaskConfig(
+            prompt="Instagram Story visual",
+            size="1080x1920",
+            aspect_ratio="9:16",
+            max_file_size_mb=4.0,
+        )
+        assert config.size == "1080x1920"
+        assert config.aspect_ratio == "9:16"
+        assert config.max_file_size_mb == 4.0
 
     def test_image_config_default_size(self):
         """Test default size value."""
@@ -105,6 +280,39 @@ class TestVideoTaskConfig:
         )
         assert config.prompt == "Product demo video"
         assert config.duration_sec == 30
+        assert config.aspect_ratio is None
+        assert config.max_file_size_mb is None
+
+    def test_video_config_with_aspect_ratio(self):
+        """Test video config with aspect ratio specified."""
+        config = VideoTaskConfig(
+            prompt="Test",
+            duration_sec=15,
+            aspect_ratio="9:16",
+        )
+        assert config.duration_sec == 15
+        assert config.aspect_ratio == "9:16"
+
+    def test_video_config_with_file_size_limit(self):
+        """Test video config with file size limit."""
+        config = VideoTaskConfig(
+            prompt="Test",
+            duration_sec=60,
+            max_file_size_mb=512.0,
+        )
+        assert config.max_file_size_mb == 512.0
+
+    def test_video_config_with_all_platform_fields(self):
+        """Test video config with all platform-specific fields."""
+        config = VideoTaskConfig(
+            prompt="Twitter video ad",
+            duration_sec=140,
+            aspect_ratio="16:9",
+            max_file_size_mb=512.0,
+        )
+        assert config.duration_sec == 140
+        assert config.aspect_ratio == "16:9"
+        assert config.max_file_size_mb == 512.0
 
     def test_video_config_defaults(self):
         """Test default duration value."""
@@ -117,9 +325,9 @@ class TestVideoTaskConfig:
             VideoTaskConfig(prompt="Test", duration_sec=3)
 
     def test_video_config_validation_max(self):
-        """Test validation rejects duration > 60."""
+        """Test validation rejects duration > 600."""
         with pytest.raises(ValidationError):
-            VideoTaskConfig(prompt="Test", duration_sec=61)
+            VideoTaskConfig(prompt="Test", duration_sec=601)
 
 
 class TestTaskList:
@@ -129,11 +337,13 @@ class TestTaskList:
         """Test task list with all task types."""
         task_list = TaskList(
             goal="Launch new feature",
+            target_platforms=[Platform.INSTAGRAM_FEED, Platform.TWITTER],
             captions=CaptionTaskConfig(n=3, style="twitter"),
             image=ImageTaskConfig(prompt="Blue visual", size="1024x1024"),
             video=VideoTaskConfig(prompt="Demo video", duration_sec=20),
         )
         assert task_list.goal == "Launch new feature"
+        assert task_list.target_platforms == [Platform.INSTAGRAM_FEED, Platform.TWITTER]
         assert task_list.captions is not None
         assert task_list.captions.n == 3
         assert task_list.image is not None
@@ -141,13 +351,62 @@ class TestTaskList:
         assert task_list.video is not None
         assert task_list.video.duration_sec == 20
 
+    def test_task_list_requires_target_platforms(self):
+        """Test that target_platforms is required."""
+        with pytest.raises(ValidationError) as exc_info:
+            TaskList(
+                goal="Test goal",
+                captions=CaptionTaskConfig(n=1),
+            )
+        assert "target_platforms" in str(exc_info.value).lower()
+
+    def test_task_list_requires_at_least_one_platform(self):
+        """Test that at least one platform must be selected."""
+        with pytest.raises(ValidationError) as exc_info:
+            TaskList(
+                goal="Test goal",
+                target_platforms=[],
+                captions=CaptionTaskConfig(n=1),
+            )
+        error_msg = str(exc_info.value).lower()
+        assert "target_platforms" in error_msg
+        assert "at least 1" in error_msg
+
+    def test_task_list_single_platform(self):
+        """Test task list with single platform."""
+        task_list = TaskList(
+            goal="Instagram only campaign",
+            target_platforms=[Platform.INSTAGRAM_FEED],
+            captions=CaptionTaskConfig(n=5),
+        )
+        assert len(task_list.target_platforms) == 1
+        assert task_list.target_platforms[0] == Platform.INSTAGRAM_FEED
+
+    def test_task_list_multiple_platforms(self):
+        """Test task list with multiple platforms."""
+        platforms = [
+            Platform.INSTAGRAM_FEED,
+            Platform.INSTAGRAM_STORY,
+            Platform.TWITTER,
+            Platform.FACEBOOK,
+            Platform.LINKEDIN,
+        ]
+        task_list = TaskList(
+            goal="Multi-platform campaign",
+            target_platforms=platforms,
+            captions=CaptionTaskConfig(n=7),
+            image=ImageTaskConfig(prompt="Product shot"),
+        )
+        assert len(task_list.target_platforms) == 5
+        assert task_list.target_platforms == platforms
+
     def test_task_list_only_goal(self):
         """Test task list with only goal fails validation."""
         import pytest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
-            TaskList(goal="Simple goal")
+            TaskList(goal="Simple goal", target_platforms=[Platform.TWITTER])
 
         assert "At least one task" in str(exc_info.value)
 
@@ -155,8 +414,10 @@ class TestTaskList:
         """Test task list with some tasks defined."""
         task_list = TaskList(
             goal="Partial tasks",
+            target_platforms=[Platform.LINKEDIN],
             captions=CaptionTaskConfig(n=5),
         )
+        assert task_list.target_platforms == [Platform.LINKEDIN]
         assert task_list.captions is not None
         assert task_list.image is None
         assert task_list.video is None
@@ -165,10 +426,12 @@ class TestTaskList:
         """Test that task list can be serialized to JSON."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.LINKEDIN, Platform.FACEBOOK],
             captions=CaptionTaskConfig(n=2, style="linkedin"),
         )
         json_data = task_list.model_dump()
         assert json_data["goal"] == "Test"
+        assert json_data["target_platforms"] == ["linkedin", "facebook"]
         assert json_data["captions"]["n"] == 2
         assert json_data["captions"]["style"] == "linkedin"
 
@@ -197,6 +460,7 @@ class TestJob:
         """Test job with minimal required fields."""
         task_list = TaskList(
             goal="Test goal",
+            target_platforms=[Platform.INSTAGRAM_FEED],
             captions=CaptionTaskConfig(n=1),
         )
         job = Job(
@@ -211,6 +475,7 @@ class TestJob:
         assert job.uid == "user123"
         assert job.status == JobStatus.PENDING_APPROVAL
         assert job.task_list.goal == "Test goal"
+        assert job.task_list.target_platforms == [Platform.INSTAGRAM_FEED]
         assert job.captions == []
         assert job.images == []
         assert job.videos == []
@@ -221,6 +486,7 @@ class TestJob:
         """Test job with approval timestamp."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.TWITTER],
             captions=CaptionTaskConfig(n=1)
         )
         job = Job(
@@ -239,6 +505,7 @@ class TestJob:
         """Test job with generated assets."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.FACEBOOK, Platform.LINKEDIN],
             captions=CaptionTaskConfig(n=2)
         )
         job = Job(
@@ -260,6 +527,7 @@ class TestJob:
         """Test job can be serialized and deserialized."""
         task_list = TaskList(
             goal="Round trip test",
+            target_platforms=[Platform.YOUTUBE],
             captions=CaptionTaskConfig(n=3),
         )
         original_job = Job(
@@ -286,6 +554,7 @@ class TestJob:
         """Test valid status transitions."""
         task_list = TaskList(
             goal="Status test",
+            target_platforms=[Platform.INSTAGRAM_STORY],
             captions=CaptionTaskConfig(n=1)
         )
 

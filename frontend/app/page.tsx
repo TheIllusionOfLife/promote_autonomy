@@ -5,11 +5,13 @@ import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { strategize, approveJob } from '@/lib/api';
-import type { Job } from '@/lib/types';
+import type { Job, Platform } from '@/lib/types';
+import { PLATFORM_SPECS } from '@/lib/types';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [goal, setGoal] = useState('');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
@@ -110,13 +112,13 @@ export default function Home() {
 
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!goal.trim() || !user) return;
+    if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
 
     setLoading(true);
     setError('');
 
     try {
-      const response = await strategize(goal);
+      const response = await strategize(goal, selectedPlatforms);
       // The job will be populated via Firestore listener
       setCurrentJob({
         event_id: response.event_id,
@@ -135,6 +137,23 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const togglePlatform = (platform: Platform) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(platform)
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
+    );
+  };
+
+  const platformLabels: Record<Platform, string> = {
+    instagram_feed: 'Instagram Feed',
+    instagram_story: 'Instagram Story',
+    twitter: 'X (Twitter)',
+    facebook: 'Facebook',
+    linkedin: 'LinkedIn',
+    youtube: 'YouTube',
   };
 
   const handleApprove = async () => {
@@ -179,17 +198,75 @@ export default function Home() {
               disabled={loading}
             />
           </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold' }}>
+              Target Platforms (select at least one):
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {(Object.keys(platformLabels) as Platform[]).map(platform => (
+                <label
+                  key={platform}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.75rem',
+                    border: `2px solid ${selectedPlatforms.includes(platform) ? '#0070f3' : '#ddd'}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: selectedPlatforms.includes(platform) ? '#e6f2ff' : 'white',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPlatforms.includes(platform)}
+                    onChange={() => togglePlatform(platform)}
+                    disabled={loading}
+                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                  />
+                  <span>{platformLabels[platform]}</span>
+                </label>
+              ))}
+            </div>
+
+            {selectedPlatforms.length > 0 && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: '#f5f5f5',
+                borderRadius: '4px',
+                fontSize: '0.9rem'
+              }}>
+                <strong>Selected Platforms ({selectedPlatforms.length}):</strong>
+                <div style={{ marginTop: '0.5rem' }}>
+                  {selectedPlatforms.map(platform => {
+                    const spec = PLATFORM_SPECS[platform];
+                    return (
+                      <div key={platform} style={{ marginBottom: '0.5rem', paddingLeft: '1rem' }}>
+                        <strong>{platformLabels[platform]}:</strong>{' '}
+                        Image {spec.image_aspect_ratio} ({spec.image_size}),
+                        Video {spec.video_aspect_ratio} (max {spec.max_video_length_sec}s),
+                        Captions max {spec.caption_max_length} chars
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={loading || !goal.trim()}
+            disabled={loading || !goal.trim() || selectedPlatforms.length === 0}
             style={{
               padding: '0.75rem 1.5rem',
               fontSize: '1rem',
-              background: '#0070f3',
+              background: (loading || !goal.trim() || selectedPlatforms.length === 0) ? '#ccc' : '#0070f3',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || !goal.trim() || selectedPlatforms.length === 0) ? 'not-allowed' : 'pointer',
             }}
           >
             {loading ? 'Generating...' : 'Generate Strategy'}
@@ -209,6 +286,11 @@ export default function Home() {
             <h3>Task List</h3>
             <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
               <strong>Goal:</strong> {currentJob.task_list.goal}
+            </p>
+
+            <p style={{ marginBottom: '1rem' }}>
+              <strong>Target Platforms:</strong>{' '}
+              {currentJob.task_list.target_platforms.map(p => platformLabels[p]).join(', ')}
             </p>
 
             {currentJob.task_list.captions && (

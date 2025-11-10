@@ -80,7 +80,11 @@ class TestConsumeEndpoint:
         """Test consume endpoint handles missing job."""
         message_data = {
             "event_id": "nonexistent-job",
-            "task_list": {"goal": "Test goal", "captions": {"n": 1, "style": "engaging"}},
+            "task_list": {
+                "goal": "Test goal",
+                "target_platforms": ["twitter"],
+                "captions": {"n": 1, "style": "engaging"}
+            },
         }
         encoded_data = base64.b64encode(json.dumps(message_data).encode()).decode()
 
@@ -101,7 +105,11 @@ class TestConsumeEndpoint:
         """Test consume endpoint rejects jobs not in processing state."""
         # Create a job in pending_approval state
         firestore_service = get_firestore_service()
-        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
         firestore_service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",
@@ -134,7 +142,11 @@ class TestConsumeEndpoint:
         """Test consume endpoint is idempotent for completed jobs."""
         # Create a completed job
         firestore_service = get_firestore_service()
-        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
         firestore_service.jobs["completed-job"] = {
             "event_id": "completed-job",
             "uid": "test-user",
@@ -172,6 +184,7 @@ class TestConsumeEndpoint:
         firestore_service = get_firestore_service()
         task_list = TaskList(
             goal="Launch viral campaign",
+            target_platforms=["twitter"],
             captions=CaptionTaskConfig(n=3, style="professional"),
         )
         firestore_service.jobs["caption-job"] = {
@@ -216,6 +229,7 @@ class TestConsumeEndpoint:
         firestore_service = get_firestore_service()
         task_list = TaskList(
             goal="Complete campaign",
+            target_platforms=["twitter"],
             captions=CaptionTaskConfig(n=2, style="casual"),
             image=ImageTaskConfig(prompt="Product image", size="1024x1024"),
             video=VideoTaskConfig(prompt="Product video", duration_sec=30),

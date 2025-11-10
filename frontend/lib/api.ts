@@ -21,7 +21,7 @@ async function getIdToken(): Promise<string> {
 /**
  * Call Strategy Agent to generate a marketing strategy.
  */
-export async function strategize(goal: string): Promise<StrategizeResponse> {
+export async function strategize(goal: string, target_platforms: string[]): Promise<StrategizeResponse> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('User not authenticated');
@@ -37,6 +37,7 @@ export async function strategize(goal: string): Promise<StrategizeResponse> {
     },
     body: JSON.stringify({
       goal,
+      target_platforms,
       uid: user.uid,
     } as StrategizeRequest),
   });

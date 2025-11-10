@@ -150,11 +150,22 @@ async def consume_task(
 
             logger.info(f"Generating image for job {event_id}")
             image_bytes = await image_service.generate_image(task_list.image)
+
+            # Determine format based on compression
+            # When max_file_size_mb is set, images are JPEG (compressed)
+            # Otherwise, images are PNG (lossless)
+            if task_list.image.max_file_size_mb:
+                filename = "image.jpg"
+                content_type = "image/jpeg"
+            else:
+                filename = "image.png"
+                content_type = "image/png"
+
             url = await storage_service.upload_file(
                 event_id=event_id,
-                filename="image.png",
+                filename=filename,
                 content=image_bytes,
-                content_type="image/png",
+                content_type=content_type,
             )
             logger.info(f"Image generated for job {event_id}")
             return url

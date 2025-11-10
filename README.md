@@ -44,21 +44,66 @@ pending_approval → (approve) → processing → (assets done) → completed
 
 Only the Strategy Agent's `/approve` endpoint can transition to `processing` (atomic operation).
 
+## Features
+
+### Multi-Platform Asset Generation
+
+Promote Autonomy generates platform-ready assets that meet each platform's specific requirements:
+
+**Supported Platforms**:
+- Instagram Feed (1:1 square, max 4MB)
+- Instagram Story (9:16 vertical, max 4MB, max 15s video)
+- X/Twitter (16:9, max 5MB)
+- Facebook (1.91:1, max 8MB)
+- LinkedIn (1.91:1, max 5MB, max 10min video)
+- YouTube (16:9, various durations)
+
+**How It Works**:
+1. **Platform Selection**: Users select one or more target platforms in the frontend UI
+2. **Constraint Calculation**: Strategy Agent calculates the most restrictive constraints across selected platforms:
+   - Minimum video duration (e.g., Instagram Story's 15s limit)
+   - Maximum file sizes (e.g., Instagram's 4MB limit)
+   - First platform's aspect ratio (future: generate variants for each)
+3. **Asset Generation**: Creative Agent generates assets matching these constraints:
+   - **Images**: RealImageService uses specified aspect_ratio, applies JPEG compression to meet max_file_size_mb
+   - **Videos**: RealVeoVideoService uses specified aspect_ratio, logs warnings if output exceeds max_file_size_mb
+
+**Example**: Selecting Instagram Story + Twitter generates:
+- Image: 1080x1920 (9:16), max 4MB (most restrictive)
+- Video: 9:16 aspect ratio, max 15s duration, max 4MB
+- Captions: Compatible with both platforms
+
+**Platform Specifications** are defined in `shared/src/promote_autonomy_shared/schemas.py`:
+```python
+PLATFORM_SPECS = {
+    Platform.INSTAGRAM_STORY: PlatformSpec(
+        image_size="1080x1920",
+        image_aspect_ratio="9:16",
+        max_image_size_mb=4.0,
+        video_aspect_ratio="9:16",
+        max_video_length_sec=15,
+        max_video_size_mb=4.0,
+        caption_max_length=2200
+    ),
+    # ... more platforms
+}
+```
+
 ## Project Structure
 
 ```
 promote-autonomy/
-├── shared/                 # Shared Pydantic schemas (22 tests)
+├── shared/                 # Shared Pydantic schemas (46 tests)
 │   ├── src/promote_autonomy_shared/
-│   │   └── schemas.py     # TaskList, Job, JobStatus models
+│   │   └── schemas.py     # Platform, PlatformSpec, TaskList, Job models
 │   └── tests/
-├── strategy-agent/         # Strategy generation service (12 tests)
+├── strategy-agent/         # Strategy generation service (18 tests)
 │   ├── app/
 │   │   ├── routers/       # /strategize, /approve endpoints
 │   │   ├── services/      # Gemini, Firestore, Pub/Sub
 │   │   └── core/          # Configuration
 │   └── tests/
-├── creative-agent/         # Asset generation service (24 tests)
+├── creative-agent/         # Asset generation service (19 tests)
 │   ├── app/
 │   │   ├── routers/       # /consume (Pub/Sub push)
 │   │   ├── services/      # Copy, Image, Video, Storage
@@ -74,7 +119,7 @@ promote-autonomy/
     └── ci.yml             # Tests for all services
 ```
 
-**Total: 62 passing tests** across all Python services (shared: 24, strategy: 14, creative: 24).
+**Total: 83 passing tests** across all Python services (shared: 46, strategy: 18, creative: 19).
 
 ## Quick Start
 
@@ -295,8 +340,9 @@ firebase deploy --only firestore:rules
 **Live Demo**: https://frontend-909635873035.asia-northeast1.run.app
 
 **Current Status**:
-- ✅ **Code**: 100% complete (62/62 tests passing)
+- ✅ **Code**: 100% complete (83/83 tests passing)
 - ✅ **Deployment**: Fully deployed to Cloud Run (all 3 services live)
+- ✅ **Platform Support**: Multi-platform asset generation (Instagram, Twitter, Facebook, LinkedIn, YouTube)
 - ✅ **End-to-End Testing**: Verified working in production
 - ✅ **Hackathon Ready**: Public demo URL available
 
