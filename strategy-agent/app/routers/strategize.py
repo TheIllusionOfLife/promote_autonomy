@@ -12,7 +12,7 @@ from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
 from app.services.gemini import get_gemini_service
 from app.services.storage import get_storage_service
-from promote_autonomy_shared.schemas import JobStatus, Platform, PLATFORM_SPECS
+from promote_autonomy_shared.schemas import BrandStyle, JobStatus, Platform, PLATFORM_SPECS
 import json
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,7 @@ async def strategize(
     uid: str = Form(...),
     authorization: str | None = Header(None),
     reference_image: UploadFile | None = File(None),
+    brand_style: str | None = Form(None),
 ):
     """
     Generate a marketing strategy from a high-level goal.
@@ -92,7 +93,7 @@ async def strategize(
     This endpoint:
     1. Verifies Firebase ID token to authenticate the user
     2. Optionally uploads and analyzes reference product image
-    3. Uses Gemini AI to generate a structured task list
+    3. Uses Gemini AI to generate a structured task list with optional brand style
     4. Creates a job in Firestore with status=pending_approval
     5. Returns the event_id for the user to review and approve
 
@@ -103,6 +104,7 @@ async def strategize(
         target_platforms: JSON array of platform strings
         uid: User ID from Firebase Auth
         reference_image: Optional product image (PNG/JPG, max 10MB)
+        brand_style: Optional brand style JSON (colors, tone, tagline)
     """
     # Parse target_platforms from JSON string
     try:
@@ -120,6 +122,23 @@ async def strategize(
             status_code=400,
             detail=f"Invalid target_platforms format: {str(e)}",
         )
+
+    # Parse brand_style from JSON string if provided
+    brand_style_obj = None
+    if brand_style:
+        try:
+            brand_style_dict = json.loads(brand_style)
+            brand_style_obj = BrandStyle(**brand_style_dict)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid brand_style JSON: {str(e)}. Expected valid JSON with colors, tone, and optional tagline.",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid brand_style: {str(e)}. Expected format: {{colors: [{{hex_code, name, usage}}], tone, tagline?}}",
+            )
 
     # Verify Firebase ID token
     if not authorization or not authorization.startswith("Bearer "):
@@ -215,11 +234,12 @@ async def strategize(
                 # Re-raise the original error
                 raise
 
-        # Generate task list via Gemini (with optional reference analysis)
+        # Generate task list via Gemini (with optional reference analysis and brand style)
         try:
             task_list = await gemini_service.generate_task_list(
                 goal,
                 platforms,
+                brand_style=brand_style_obj,
                 reference_analysis=reference_analysis
             )
         except Exception as task_list_error:

@@ -4,9 +4,10 @@ import asyncio
 import json
 import logging
 import re
-from typing import Protocol
+from typing import Optional, Protocol
 
 from promote_autonomy_shared.schemas import (
+    BrandStyle,
     CaptionTaskConfig,
     ImageTaskConfig,
     Platform,
@@ -42,6 +43,7 @@ class GeminiService(Protocol):
         self,
         goal: str,
         target_platforms: list[Platform],
+        brand_style: Optional[BrandStyle] = None,
         reference_analysis: str | None = None
     ) -> TaskList:
         """Generate a task list from a marketing goal.
@@ -49,6 +51,7 @@ class GeminiService(Protocol):
         Args:
             goal: Marketing goal
             target_platforms: Target social media platforms
+            brand_style: Optional brand style guide
             reference_analysis: Optional analysis of reference product image
 
         Returns:
@@ -100,10 +103,15 @@ This analysis is generated in mock mode for development purposes."""
         self,
         goal: str,
         target_platforms: list[Platform],
+        brand_style: Optional[BrandStyle] = None,
         reference_analysis: str | None = None
     ) -> TaskList:
         """Generate a mock task list based on the goal and target platforms."""
-        logger.info(f"[MOCK] Generating task list for goal: {goal}, platforms: {target_platforms}")
+        brand_info = ""
+        if brand_style:
+            colors = ", ".join([c.name for c in brand_style.colors])
+            brand_info = f" with {brand_style.tone} tone and colors: {colors}"
+        logger.info(f"[MOCK] Generating task list for goal: {goal}, platforms: {target_platforms}{brand_info}")
 
         # Calculate platform constraints (most restrictive wins)
         specs = [PLATFORM_SPECS[p] for p in target_platforms]
@@ -151,6 +159,7 @@ This analysis is generated in mock mode for development purposes."""
         task_list = TaskList(
             goal=goal,
             target_platforms=target_platforms,
+            brand_style=brand_style,
             captions=CaptionTaskConfig(
                 n=5 if has_social else 3,
                 style="twitter" if has_social else "engaging",
@@ -179,6 +188,15 @@ This analysis is generated in mock mode for development purposes."""
 
 class RealGeminiService:
     """Real Gemini API implementation."""
+
+    # Class-level constants to avoid recreation on every call
+    TONE_DESCRIPTIONS = {
+        "professional": "corporate, formal language; avoid emojis",
+        "casual": "friendly, conversational tone; emojis are okay",
+        "playful": "fun and energetic; use emojis liberally",
+        "luxury": "sophisticated, elegant language; minimal emojis",
+        "technical": "precise and detailed; use industry terminology",
+    }
 
     def __init__(self):
         """Initialize Gemini client."""
@@ -254,6 +272,7 @@ Provide this analysis in a detailed, structured format (200-400 words) that can 
         self,
         goal: str,
         target_platforms: list[Platform],
+        brand_style: Optional[BrandStyle] = None,
         reference_analysis: str | None = None
     ) -> TaskList:
         """Generate a task list using Gemini API."""
@@ -275,6 +294,28 @@ Provide this analysis in a detailed, structured format (200-400 words) that can 
 
         platform_names = ", ".join([p.value for p in target_platforms])
 
+        # Build brand context for prompt
+        brand_context = ""
+        if brand_style:
+            color_list = ", ".join(
+                [f"{c.name} (#{c.hex_code})" for c in brand_style.colors]
+            )
+            tone_desc = self.TONE_DESCRIPTIONS.get(
+                brand_style.tone, "professional tone"
+            )
+
+            brand_context = f"""
+Brand Style Requirements:
+- Brand Colors: {color_list}
+- Brand Tone: {brand_style.tone} ({tone_desc})
+- Brand Tagline: {brand_style.tagline or "N/A"}
+
+IMPORTANT: All generated content MUST:
+1. Reference the specified brand colors in image and video prompts
+2. Match the {brand_style.tone} tone in all captions
+3. Include the tagline in at least one caption if provided
+"""
+
         # Build prompt with optional reference analysis
         reference_context = ""
         if reference_analysis:
@@ -294,7 +335,7 @@ Platform Constraints:
 - Image: {image_size} ({image_aspect_ratio}), max {min_image_size_mb}MB
 - Video: {video_aspect_ratio}, max {min_video_duration}s, max {min_video_size_mb}MB
 - Captions: max {min_caption_length} characters each
-
+{brand_context}
 Generate a JSON object with this structure:
 {{
   "goal": "<the goal>",
@@ -310,6 +351,7 @@ Rules:
 - Include video only if explicitly mentioned or goal is major campaign
 - Be specific and actionable in prompts
 - Ensure image/video specs match platform constraints above
+- Image and video prompts should reference brand colors when provided
 - Return ONLY valid JSON, no markdown formatting
 """
 
@@ -329,6 +371,8 @@ Rules:
 
             # Parse JSON to TaskList
             data = json.loads(response_text)
+            # Add brand_style to the parsed data
+            data["brand_style"] = brand_style.model_dump() if brand_style else None
             task_list = TaskList(**data)
 
             logger.info(f"Generated task list via Gemini: {task_list.model_dump_json()}")
@@ -341,6 +385,7 @@ Rules:
             return TaskList(
                 goal=goal,
                 target_platforms=target_platforms,
+                brand_style=brand_style,
                 captions=CaptionTaskConfig(n=3, style="engaging"),
             )
 

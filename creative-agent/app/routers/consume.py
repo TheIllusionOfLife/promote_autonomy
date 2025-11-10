@@ -132,7 +132,9 @@ async def consume_task(
                 return None
 
             logger.info(f"Generating captions for job {event_id}")
-            captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
+            captions = await copy_service.generate_captions(
+                task_list.captions, task_list.goal, task_list.brand_style
+            )
             captions_json = json.dumps(captions, indent=2).encode("utf-8")
             url = await storage_service.upload_file(
                 event_id=event_id,
@@ -149,7 +151,9 @@ async def consume_task(
                 return None
 
             logger.info(f"Generating image for job {event_id}")
-            image_bytes = await image_service.generate_image(task_list.image)
+            image_bytes = await image_service.generate_image(
+                task_list.image, task_list.brand_style
+            )
 
             # Determine format based on compression
             # When max_file_size_mb is set, images are JPEG (compressed)
@@ -176,7 +180,9 @@ async def consume_task(
                 return None
 
             logger.info(f"Generating video for job {event_id}")
-            video_bytes = await video_service.generate_video(task_list.video)
+            video_bytes = await video_service.generate_video(
+                task_list.video, task_list.brand_style
+            )
 
             # Check if video exceeds size limit and store warning
             # Warning storage is non-critical - if it fails, we still return the video

@@ -4,6 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from promote_autonomy_shared.schemas import (
+    BrandColor,
+    BrandStyle,
+    BrandTone,
     CaptionTaskConfig,
     ImageTaskConfig,
     Job,
@@ -663,3 +666,202 @@ class TestJob:
             updated_at="2025-11-08T10:00:00Z",
         )
         assert job.reference_images == []
+
+
+class TestBrandColor:
+    """Tests for BrandColor model."""
+
+    def test_valid_brand_color(self):
+        """Test valid brand color configuration."""
+        color = BrandColor(
+            hex_code="FF5733",
+            name="Primary Red",
+            usage="primary"
+        )
+        assert color.hex_code == "FF5733"
+        assert color.name == "Primary Red"
+        assert color.usage == "primary"
+
+    def test_brand_color_default_usage(self):
+        """Test default usage value."""
+        color = BrandColor(hex_code="000000", name="Black")
+        assert color.usage == "general"
+
+    def test_brand_color_validates_hex_format(self):
+        """Test validation rejects invalid hex codes."""
+        # Invalid: too short
+        with pytest.raises(ValidationError):
+            BrandColor(hex_code="FFF", name="White")
+
+        # Invalid: contains non-hex characters
+        with pytest.raises(ValidationError):
+            BrandColor(hex_code="GGGGGG", name="Invalid")
+
+        # Invalid: includes # prefix
+        with pytest.raises(ValidationError):
+            BrandColor(hex_code="#FF5733", name="Red")
+
+    def test_brand_color_validates_usage(self):
+        """Test validation rejects invalid usage values."""
+        with pytest.raises(ValidationError):
+            BrandColor(
+                hex_code="FF5733",
+                name="Red",
+                usage="invalid_usage"
+            )
+
+    def test_brand_color_accepts_all_valid_usages(self):
+        """Test all valid usage values are accepted."""
+        valid_usages = ["primary", "accent", "background", "general"]
+        for usage in valid_usages:
+            color = BrandColor(
+                hex_code="000000",
+                name="Test",
+                usage=usage
+            )
+            assert color.usage == usage
+
+
+class TestBrandStyle:
+    """Tests for BrandStyle model."""
+
+    def test_valid_brand_style(self):
+        """Test valid brand style configuration."""
+        style = BrandStyle(
+            colors=[
+                BrandColor(hex_code="FF5733", name="Primary Red", usage="primary"),
+                BrandColor(hex_code="33FF57", name="Accent Green", usage="accent"),
+            ],
+            tone=BrandTone.PROFESSIONAL,
+            tagline="Innovation starts here"
+        )
+        assert len(style.colors) == 2
+        assert style.tone == BrandTone.PROFESSIONAL
+        assert style.tagline == "Innovation starts here"
+
+    def test_brand_style_default_tone(self):
+        """Test default tone is PROFESSIONAL."""
+        style = BrandStyle(
+            colors=[BrandColor(hex_code="000000", name="Black")]
+        )
+        assert style.tone == BrandTone.PROFESSIONAL
+
+    def test_brand_style_optional_fields(self):
+        """Test optional logo_url and tagline fields."""
+        style = BrandStyle(
+            colors=[BrandColor(hex_code="000000", name="Black")],
+            tone=BrandTone.CASUAL
+        )
+        assert style.logo_url is None
+        assert style.tagline is None
+
+    def test_brand_style_requires_at_least_one_color(self):
+        """Test validation requires at least one color."""
+        with pytest.raises(ValidationError):
+            BrandStyle(colors=[], tone=BrandTone.PLAYFUL)
+
+    def test_brand_style_max_five_colors(self):
+        """Test validation limits to 5 colors."""
+        colors = [
+            BrandColor(hex_code=f"{i:02d}0000", name=f"Color {i}")
+            for i in range(6)
+        ]
+        with pytest.raises(ValidationError):
+            BrandStyle(colors=colors, tone=BrandTone.LUXURY)
+
+    def test_brand_style_tagline_max_length(self):
+        """Test tagline max length validation."""
+        with pytest.raises(ValidationError):
+            BrandStyle(
+                colors=[BrandColor(hex_code="000000", name="Black")],
+                tagline="x" * 101  # Exceeds 100 character limit
+            )
+
+    def test_brand_style_rejects_multiple_primary_colors(self):
+        """Test validation rejects more than one primary color."""
+        with pytest.raises(ValidationError, match="Only one color can be marked as primary"):
+            BrandStyle(
+                colors=[
+                    BrandColor(hex_code="FF0000", name="Red 1", usage="primary"),
+                    BrandColor(hex_code="0000FF", name="Blue 1", usage="primary"),
+                ],
+                tone=BrandTone.CASUAL
+            )
+
+    def test_brand_style_rejects_tagline_with_html(self):
+        """Test validation rejects tagline with HTML tags to prevent XSS."""
+        with pytest.raises(ValidationError, match="Tagline cannot contain HTML tags"):
+            BrandStyle(
+                colors=[BrandColor(hex_code="000000", name="Black")],
+                tone=BrandTone.PROFESSIONAL,
+                tagline="<script>alert('xss')</script>"
+            )
+
+    def test_brand_style_all_tones(self):
+        """Test all brand tone values are valid."""
+        tones = [
+            BrandTone.PROFESSIONAL,
+            BrandTone.CASUAL,
+            BrandTone.PLAYFUL,
+            BrandTone.LUXURY,
+            BrandTone.TECHNICAL,
+        ]
+        for tone in tones:
+            style = BrandStyle(
+                colors=[BrandColor(hex_code="000000", name="Black")],
+                tone=tone
+            )
+            assert style.tone == tone
+
+
+class TestTaskListWithBrandStyle:
+    """Tests for TaskList with brand_style field."""
+
+    def test_task_list_with_brand_style(self):
+        """Test TaskList with brand style."""
+        brand_style = BrandStyle(
+            colors=[BrandColor(hex_code="1A1A1A", name="Charcoal", usage="primary")],
+            tone=BrandTone.LUXURY,
+            tagline="Elevate your experience"
+        )
+        task_list = TaskList(
+            goal="Launch premium product",
+            target_platforms=[Platform.INSTAGRAM_FEED],
+            brand_style=brand_style,
+            image=ImageTaskConfig(prompt="Elegant product shot", size="1080x1080")
+        )
+        assert task_list.brand_style is not None
+        assert task_list.brand_style.tone == BrandTone.LUXURY
+        assert len(task_list.brand_style.colors) == 1
+
+    def test_task_list_without_brand_style(self):
+        """Test TaskList works without brand style (optional)."""
+        task_list = TaskList(
+            goal="Generic campaign",
+            target_platforms=[Platform.TWITTER],
+            captions=CaptionTaskConfig(n=3)
+        )
+        assert task_list.brand_style is None
+
+    def test_task_list_brand_style_serialization(self):
+        """Test TaskList with brand style serializes correctly."""
+        brand_style = BrandStyle(
+            colors=[BrandColor(hex_code="FF5733", name="Red")],
+            tone=BrandTone.PLAYFUL
+        )
+        task_list = TaskList(
+            goal="Fun campaign",
+            target_platforms=[Platform.FACEBOOK],
+            brand_style=brand_style,
+            captions=CaptionTaskConfig(n=5)
+        )
+
+        # Serialize
+        data = task_list.model_dump()
+        assert "brand_style" in data
+        assert data["brand_style"]["tone"] == "playful"
+
+        # Deserialize
+        reconstructed = TaskList(**data)
+        assert reconstructed.brand_style.tone == BrandTone.PLAYFUL
+        assert reconstructed.brand_style.colors[0].hex_code == "FF5733"

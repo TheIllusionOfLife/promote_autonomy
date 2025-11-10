@@ -46,9 +46,8 @@ async function getIdToken(): Promise<string> {
  * Call Strategy Agent to generate a marketing strategy.
  */
 export async function strategize(
-  goal: string,
-  target_platforms: string[],
-  referenceImage: File | null = null
+  request: StrategizeRequest,
+  referenceImage?: File | null
 ): Promise<StrategizeResponse> {
   const user = auth.currentUser;
   if (!user) {
@@ -59,9 +58,12 @@ export async function strategize(
 
   // Build FormData for multipart/form-data request
   const formData = new FormData();
-  formData.append('goal', goal);
-  formData.append('target_platforms', JSON.stringify(target_platforms));
-  formData.append('uid', user.uid);
+  formData.append('goal', request.goal);
+  formData.append('target_platforms', JSON.stringify(request.target_platforms));
+  formData.append('uid', request.uid);
+  if (request.brand_style) {
+    formData.append('brand_style', JSON.stringify(request.brand_style));
+  }
   if (referenceImage) {
     formData.append('reference_image', referenceImage);
   }

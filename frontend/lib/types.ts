@@ -117,9 +117,30 @@ export interface VideoTaskConfig {
   max_file_size_mb?: number;
 }
 
+export type BrandTone =
+  | 'professional'
+  | 'casual'
+  | 'playful'
+  | 'luxury'
+  | 'technical';
+
+export interface BrandColor {
+  hex_code: string;
+  name: string;
+  usage: 'primary' | 'accent' | 'background' | 'general';
+}
+
+export interface BrandStyle {
+  colors: BrandColor[];
+  tone: BrandTone;
+  logo_url?: string;
+  tagline?: string;
+}
+
 export interface TaskList {
   goal: string;
   target_platforms: Platform[];
+  brand_style?: BrandStyle;
   captions?: CaptionTaskConfig;
   image?: ImageTaskConfig;
   video?: VideoTaskConfig;
@@ -144,6 +165,7 @@ export interface StrategizeRequest {
   goal: string;
   target_platforms: Platform[];
   uid: string;
+  brand_style?: BrandStyle;
 }
 
 export interface StrategizeResponse {

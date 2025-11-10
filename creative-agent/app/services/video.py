@@ -4,9 +4,9 @@ import asyncio
 import logging
 import time
 import struct
-from typing import Protocol
+from typing import Optional, Protocol
 
-from promote_autonomy_shared.schemas import VideoTaskConfig
+from promote_autonomy_shared.schemas import BrandStyle, VideoTaskConfig
 
 from app.core.config import get_settings
 
@@ -16,11 +16,14 @@ logger = logging.getLogger(__name__)
 class VideoService(Protocol):
     """Protocol for video generation services."""
 
-    async def generate_video(self, config: VideoTaskConfig) -> bytes:
+    async def generate_video(
+        self, config: VideoTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate video from prompt.
 
         Args:
             config: Video generation configuration
+            brand_style: Brand style guide (optional)
 
         Returns:
             Video bytes (MP4 format)
@@ -34,7 +37,9 @@ class MockVideoService:
     # Mock MP4 structure constants
     MOCK_MVHD_HEADER_SIZE = 100  # Minimal header size sufficient for MP4 parsers
 
-    async def generate_video(self, config: VideoTaskConfig) -> bytes:
+    async def generate_video(
+        self, config: VideoTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate minimal valid MP4 file with placeholder content.
 
         Creates a very basic MP4 file structure that can be recognized
@@ -60,7 +65,11 @@ class MockVideoService:
         moov_box = struct.pack(">I", moov_size) + b"moov" + moov_content
 
         # mdat box (media data) - placeholder for actual video data
-        mock_video_data = f"MOCK VIDEO - Duration: {config.duration_sec}s - Prompt: {config.prompt}".encode(
+        # Include brand info if provided
+        brand_info = ""
+        if brand_style:
+            brand_info = f" - Brand: {brand_style.tone}"
+        mock_video_data = f"MOCK VIDEO - Duration: {config.duration_sec}s{brand_info} - Prompt: {config.prompt}".encode(
             "utf-8"
         )
         mdat_size = len(mock_video_data) + 8
@@ -74,6 +83,15 @@ class MockVideoService:
 
 class RealVeoVideoService:
     """Real video generation using Google Veo via google.genai SDK."""
+
+    # Class-level constants to avoid recreation on every call
+    TONE_DESCRIPTORS = {
+        "professional": "clean, corporate aesthetic",
+        "casual": "friendly, approachable vibe",
+        "playful": "energetic, fun atmosphere",
+        "luxury": "elegant, sophisticated feel",
+        "technical": "precise, detailed style",
+    }
 
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
@@ -114,11 +132,14 @@ class RealVeoVideoService:
                 f"(project={settings.PROJECT_ID}, location={settings.LOCATION}): {e}"
             ) from e
 
-    async def generate_video(self, config: VideoTaskConfig) -> bytes:
+    async def generate_video(
+        self, config: VideoTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate video using Veo API with long-running operation polling.
 
         Args:
             config: Video generation configuration
+            brand_style: Brand style guide (optional)
 
         Returns:
             Video bytes (MP4 format) downloaded from GCS
@@ -130,12 +151,26 @@ class RealVeoVideoService:
         """
         from google.genai.types import GenerateVideosConfig
 
+        # Enhance prompt with brand context
+        enhanced_prompt = config.prompt
+        if brand_style:
+            tone_desc = self.TONE_DESCRIPTORS.get(brand_style.tone, "professional style")
+            enhanced_prompt = f"{config.prompt}. Style: {tone_desc}."
+
+            if brand_style.colors:
+                # Find primary color, fallback to first if no primary specified
+                primary_color = next(
+                    (c for c in brand_style.colors if c.usage == "primary"),
+                    brand_style.colors[0]
+                )
+                enhanced_prompt += f" Use {primary_color.name} (#{primary_color.hex_code}) as primary color accent."
+
         # Validate prompt length to prevent abuse and API errors
         MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts
-        if len(config.prompt) > MAX_PROMPT_LENGTH:
+        if len(enhanced_prompt) > MAX_PROMPT_LENGTH:
             raise ValueError(
                 f"Prompt exceeds maximum length of {MAX_PROMPT_LENGTH} characters "
-                f"(got {len(config.prompt)})"
+                f"(got {len(enhanced_prompt)})"
             )
 
         # Get current settings (allows for testing with mocked settings)
@@ -166,7 +201,7 @@ class RealVeoVideoService:
         operation = await asyncio.to_thread(
             self.client.models.generate_videos,
             model=settings.VEO_MODEL,
-            prompt=config.prompt,
+            prompt=enhanced_prompt,
             config=GenerateVideosConfig(
                 aspect_ratio=aspect_ratio,
                 duration_seconds=duration,

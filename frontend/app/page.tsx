@@ -5,8 +5,9 @@ import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { strategize, approveJob } from '@/lib/api';
-import type { Job, Platform } from '@/lib/types';
+import type { Job, BrandStyle, Platform } from '@/lib/types';
 import { PLATFORM_SPECS } from '@/lib/types';
+import BrandStyleForm from '@/components/BrandStyleForm';
 
 function detectAspectRatioConflicts(platforms: Platform[]): string[] {
   if (platforms.length <= 1) return [];
@@ -45,6 +46,8 @@ export default function Home() {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
   const [actualCaptions, setActualCaptions] = useState<string[]>([]);
+  const [useBrandStyle, setUseBrandStyle] = useState(false);
+  const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
   const [clientWarnings, setClientWarnings] = useState<string[]>([]);
   const [strategizeWarnings, setStrategizeWarnings] = useState<string[]>([]);
 
@@ -183,11 +186,28 @@ export default function Home() {
     e.preventDefault();
     if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
 
+    // Validate brand style if enabled
+    if (useBrandStyle && brandStyle) {
+      const invalidColors = brandStyle.colors.some(c => !c.name || !c.hex_code);
+      if (invalidColors) {
+        setError('Please complete all brand color fields (name and color)');
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const response = await strategize(goal, selectedPlatforms, referenceImage);
+      const response = await strategize(
+        {
+          goal,
+          target_platforms: selectedPlatforms,
+          uid: user.uid,
+          brand_style: useBrandStyle && brandStyle ? brandStyle : undefined,
+        },
+        referenceImage
+      );
 
       // Store backend warnings from strategy response
       setStrategizeWarnings(response.warnings || []);
@@ -349,6 +369,37 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Brand Style Guide Toggle */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useBrandStyle}
+                onChange={(e) => {
+                  setUseBrandStyle(e.target.checked);
+                  if (!e.target.checked) {
+                    setBrandStyle(null);
+                  } else if (!brandStyle) {
+                    // Initialize with default brand style
+                    setBrandStyle({
+                      colors: [{ hex_code: '000000', name: 'Primary', usage: 'primary' }],
+                      tone: 'professional',
+                    });
+                  }
+                }}
+                disabled={loading}
+              />
+              <span style={{ fontWeight: 500 }}>Use Brand Style Guide</span>
+            </label>
+          </div>
+
+          {/* Brand Style Form */}
+          {useBrandStyle && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <BrandStyleForm value={brandStyle} onChange={setBrandStyle} />
             </div>
           )}
 
