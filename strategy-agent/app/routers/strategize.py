@@ -85,6 +85,7 @@ async def strategize(
     uid: str = Form(...),
     authorization: str | None = Header(None),
     reference_image: UploadFile | None = File(None),
+    brand_style: str | None = Form(None),
 ):
     """
     Generate a marketing strategy from a high-level goal.
@@ -92,7 +93,7 @@ async def strategize(
     This endpoint:
     1. Verifies Firebase ID token to authenticate the user
     2. Optionally uploads and analyzes reference product image
-    3. Uses Gemini AI to generate a structured task list
+    3. Uses Gemini AI to generate a structured task list with optional brand style
     4. Creates a job in Firestore with status=pending_approval
     5. Returns the event_id for the user to review and approve
 
@@ -103,6 +104,7 @@ async def strategize(
         target_platforms: JSON array of platform strings
         uid: User ID from Firebase Auth
         reference_image: Optional product image (PNG/JPG, max 10MB)
+        brand_style: Optional brand style JSON (colors, tone, tagline)
     """
     # Parse target_platforms from JSON string
     try:
@@ -120,6 +122,19 @@ async def strategize(
             status_code=400,
             detail=f"Invalid target_platforms format: {str(e)}",
         )
+
+    # Parse brand_style from JSON string if provided
+    brand_style_obj = None
+    if brand_style:
+        try:
+            brand_style_dict = json.loads(brand_style)
+            from promote_autonomy_shared.schemas import BrandStyle
+            brand_style_obj = BrandStyle(**brand_style_dict)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid brand_style format: {str(e)}",
+            )
 
     # Verify Firebase ID token
     if not authorization or not authorization.startswith("Bearer "):
@@ -220,7 +235,7 @@ async def strategize(
             task_list = await gemini_service.generate_task_list(
                 goal,
                 platforms,
-                brand_style=brand_style,
+                brand_style=brand_style_obj,
                 reference_analysis=reference_analysis
             )
         except Exception as task_list_error:
