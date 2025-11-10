@@ -5,12 +5,14 @@ description = "AI strategy generation with HITL approval"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
+    "python-multipart>=0.0.9",
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
     "google-cloud-firestore>=2.20.0",
     "google-cloud-pubsub>=2.26.0",
     "google-cloud-aiplatform>=1.75.0",
+    "google-cloud-storage>=2.18.0",
     "firebase-admin>=6.6.0",
     "python-dotenv>=1.0.0",
     "python-ulid>=3.0.0",

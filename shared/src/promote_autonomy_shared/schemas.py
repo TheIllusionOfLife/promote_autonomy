@@ -139,6 +139,10 @@ class ImageTaskConfig(BaseModel):
         default=None,
         description="Maximum file size in megabytes",
     )
+    reference_image_url: Optional[str] = Field(
+        default=None,
+        description="URL to reference product image for context-aware generation",
+    )
 
     @field_validator("size")
     @classmethod
@@ -215,6 +219,10 @@ class TaskList(BaseModel):
         description="Target social media platforms for this campaign",
         min_length=1,
     )
+    reference_image_url: Optional[str] = Field(
+        default=None,
+        description="URL to uploaded reference product image",
+    )
     captions: Optional[CaptionTaskConfig] = Field(
         default=None,
         description="Caption generation configuration",
@@ -283,6 +291,10 @@ class Job(BaseModel):
     warnings: list[str] = Field(
         default_factory=list,
         description="Warning messages about asset generation (e.g., file size limits exceeded)",
+    )
+    reference_images: list[str] = Field(
+        default_factory=list,
+        description="URLs to uploaded reference images in Cloud Storage",
     )
 
     model_config = {"json_schema_extra": {"example": {

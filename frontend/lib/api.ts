@@ -45,7 +45,11 @@ async function getIdToken(): Promise<string> {
 /**
  * Call Strategy Agent to generate a marketing strategy.
  */
-export async function strategize(goal: string, target_platforms: string[]): Promise<StrategizeResponse> {
+export async function strategize(
+  goal: string,
+  target_platforms: string[],
+  referenceImage: File | null = null
+): Promise<StrategizeResponse> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('User not authenticated');
@@ -53,17 +57,22 @@ export async function strategize(goal: string, target_platforms: string[]): Prom
 
   const idToken = await getIdToken();
 
+  // Build FormData for multipart/form-data request
+  const formData = new FormData();
+  formData.append('goal', goal);
+  formData.append('target_platforms', JSON.stringify(target_platforms));
+  formData.append('uid', user.uid);
+  if (referenceImage) {
+    formData.append('reference_image', referenceImage);
+  }
+
   const response = await fetch(`${STRATEGY_AGENT_URL}/api/strategize`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type - browser will set it with boundary for FormData
       'Authorization': `Bearer ${idToken}`,
     },
-    body: JSON.stringify({
-      goal,
-      target_platforms,
-      uid: user.uid,
-    } as StrategizeRequest),
+    body: formData,
   });
 
   if (!response.ok) {
