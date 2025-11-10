@@ -80,7 +80,7 @@ class MockGeminiService:
             else None,
             video=VideoTaskConfig(
                 prompt=f"Promotional video for: {goal[:50]}",
-                duration_sec=min(15, min_video_duration),  # Default 15s or less
+                duration_sec=min_video_duration,  # Use most restrictive duration
                 aspect_ratio=video_aspect_ratio,
                 max_file_size_mb=min_video_size_mb,
             )
@@ -186,6 +186,7 @@ Rules:
             logger.warning("Falling back to default task list due to API error")
             return TaskList(
                 goal=goal,
+                target_platforms=target_platforms,
                 captions=CaptionTaskConfig(n=3, style="engaging"),
             )
 

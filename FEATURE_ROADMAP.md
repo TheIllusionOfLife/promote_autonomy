@@ -34,7 +34,7 @@ Build an AI-powered marketing automation system that generates high-quality prom
 - ✅ Proper text wrapping for long prompts
 
 ### Quality & Testing
-- ✅ 62 passing tests (unit + integration)
+- ✅ 83 passing tests (unit + integration)
 - ✅ CI/CD with GitHub Actions
 - ✅ Security hardening (OIDC auth, user-scoped Firestore rules)
 - ✅ Timeout handling (120s for Gemini, 90s for Imagen, 120s for Veo)
@@ -389,8 +389,8 @@ async def generate_video(self, task: VideoTaskConfig) -> str:
 - Caption lengths enforced via PLATFORM_SPECS (ready for future truncation logic)
 
 **Edge Cases Handled:**
-- Multiple platforms with different constraints → Uses most restrictive (minimum file sizes, minimum video duration)
-- First platform's aspect ratio used for images and videos (future enhancement: generate multiple variants)
+- Multiple platforms with different constraints → Uses most restrictive for file sizes and duration (maximum values); aspect ratio uses first selected platform only
+- First platform's aspect ratio used for images and videos (limitation: not the most restrictive; future enhancement: generate multiple variants)
 - Video file size cannot be controlled by VEO API → Logs warning if exceeds limit (future: ffmpeg compression)
 
 ---

@@ -62,7 +62,7 @@ Promote Autonomy generates platform-ready assets that meet each platform's speci
 1. **Platform Selection**: Users select one or more target platforms in the frontend UI
 2. **Constraint Calculation**: Strategy Agent calculates the most restrictive constraints across selected platforms:
    - Minimum video duration (e.g., Instagram Story's 15s limit)
-   - Minimum file sizes (e.g., Instagram's 4MB limit)
+   - Maximum file sizes (e.g., Instagram's 4MB limit)
    - First platform's aspect ratio (future: generate variants for each)
 3. **Asset Generation**: Creative Agent generates assets matching these constraints:
    - **Images**: RealImageService uses specified aspect_ratio, applies JPEG compression to meet max_file_size_mb

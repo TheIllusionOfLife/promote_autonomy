@@ -198,6 +198,10 @@ class RealImageService:
         """
         max_size_bytes = int(max_size_mb * 1024 * 1024)
 
+        # Convert RGBA/LA/P modes to RGB for JPEG compatibility
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+
         # Start with high quality JPEG
         quality = 95
         buffer = BytesIO()

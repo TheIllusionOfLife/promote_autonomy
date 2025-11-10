@@ -160,6 +160,19 @@ class ImageTaskConfig(BaseModel):
 
         return v
 
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect_ratio_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate aspect ratio format is N:M or N.N:M."""
+        if v is None:
+            return v
+        if not re.match(r"^\d+(?:\.\d+)?:\d+(?:\.\d+)?$", v):
+            raise ValueError(
+                f"Invalid aspect ratio format '{v}'. Expected format: 'N:M' "
+                "(e.g., '1:1', '16:9', '1.91:1')"
+            )
+        return v
+
 
 class VideoTaskConfig(BaseModel):
     """Configuration for video generation task."""
@@ -179,6 +192,19 @@ class VideoTaskConfig(BaseModel):
         default=None,
         description="Maximum file size in megabytes",
     )
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect_ratio_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate aspect ratio format is N:M or N.N:M."""
+        if v is None:
+            return v
+        if not re.match(r"^\d+(?:\.\d+)?:\d+(?:\.\d+)?$", v):
+            raise ValueError(
+                f"Invalid aspect ratio format '{v}'. Expected format: 'N:M' "
+                "(e.g., '1:1', '16:9', '1.91:1')"
+            )
+        return v
 
 
 class TaskList(BaseModel):
@@ -210,13 +236,6 @@ class TaskList(BaseModel):
             raise ValueError(
                 "At least one task (captions, image, or video) must be specified. "
                 "Cannot create a job with no assets to generate."
-            )
-
-        # At least one platform must be selected
-        if not self.target_platforms:
-            raise ValueError(
-                "At least one platform must be selected. "
-                "Cannot create a campaign without target platforms."
             )
 
         return self
