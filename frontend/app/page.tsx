@@ -39,6 +39,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [goal, setGoal] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
@@ -145,6 +147,38 @@ export default function Home() {
     setClientWarnings(warnings);
   }, [selectedPlatforms]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('Please upload a JPEG or PNG image');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be less than 10MB');
+      return;
+    }
+
+    setReferenceImage(file);
+    setError('');
+
+    // Generate preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setReferenceImage(null);
+    setImagePreview(null);
+  };
+
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
@@ -153,7 +187,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await strategize(goal, selectedPlatforms);
+      const response = await strategize(goal, selectedPlatforms, referenceImage);
 
       // Store backend warnings from strategy response
       setStrategizeWarnings(response.warnings || []);
@@ -317,6 +351,82 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Reference Image Upload */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold' }}>
+              Product Image (Optional):
+            </label>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.75rem' }}>
+              Upload a product photo to generate visually consistent marketing materials
+            </p>
+
+            {!imagePreview ? (
+              <div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handleImageUpload}
+                  disabled={loading}
+                  style={{ display: 'none' }}
+                  id="reference-image-input"
+                />
+                <label
+                  htmlFor="reference-image-input"
+                  style={{
+                    display: 'inline-block',
+                    padding: '0.75rem 1.5rem',
+                    background: '#f5f5f5',
+                    border: '2px dashed #ddd',
+                    borderRadius: '6px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  📷 Choose Image (PNG/JPG, max 10MB)
+                </label>
+              </div>
+            ) : (
+              <div style={{
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                padding: '1rem',
+                background: '#f9f9f9'
+              }}>
+                <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
+                    {referenceImage?.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    disabled={loading}
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      background: '#ff4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <img
+                  src={imagePreview}
+                  alt="Reference product"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '300px',
+                    borderRadius: '4px',
+                    display: 'block'
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           <button
             type="submit"
