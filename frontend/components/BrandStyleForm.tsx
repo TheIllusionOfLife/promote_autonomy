@@ -42,6 +42,7 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
       colors: newColors,
       tone: newTone,
       tagline: newTagline || undefined,
+      logo_url: value?.logo_url, // Preserve existing logo_url
     });
   };
 
