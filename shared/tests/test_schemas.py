@@ -8,9 +8,151 @@ from promote_autonomy_shared.schemas import (
     ImageTaskConfig,
     Job,
     JobStatus,
+    Platform,
+    PlatformSpec,
+    PLATFORM_SPECS,
     TaskList,
     VideoTaskConfig,
 )
+
+
+class TestPlatform:
+    """Tests for Platform enum."""
+
+    def test_platform_enum_values(self):
+        """Test all platform enum values exist."""
+        assert Platform.INSTAGRAM_FEED == "instagram_feed"
+        assert Platform.INSTAGRAM_STORY == "instagram_story"
+        assert Platform.TWITTER == "twitter"
+        assert Platform.FACEBOOK == "facebook"
+        assert Platform.LINKEDIN == "linkedin"
+        assert Platform.YOUTUBE == "youtube"
+
+    def test_platform_from_string(self):
+        """Test creating Platform from string."""
+        platform = Platform("instagram_feed")
+        assert platform == Platform.INSTAGRAM_FEED
+
+    def test_platform_invalid_value(self):
+        """Test invalid platform value raises error."""
+        with pytest.raises(ValueError):
+            Platform("tiktok")
+
+
+class TestPlatformSpec:
+    """Tests for PlatformSpec model."""
+
+    def test_valid_platform_spec(self):
+        """Test creating valid platform spec."""
+        spec = PlatformSpec(
+            platform=Platform.INSTAGRAM_FEED,
+            image_size="1080x1080",
+            image_aspect_ratio="1:1",
+            max_image_size_mb=4.0,
+            video_size="1080x1080",
+            video_aspect_ratio="1:1",
+            max_video_length_sec=60,
+            max_video_size_mb=4.0,
+            caption_max_length=2200,
+        )
+        assert spec.platform == Platform.INSTAGRAM_FEED
+        assert spec.image_size == "1080x1080"
+        assert spec.image_aspect_ratio == "1:1"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_aspect_ratio == "1:1"
+        assert spec.max_video_length_sec == 60
+
+    def test_platform_spec_requires_all_fields(self):
+        """Test that all fields are required."""
+        with pytest.raises(ValidationError):
+            PlatformSpec(platform=Platform.INSTAGRAM_FEED)  # type: ignore
+
+
+class TestPlatformSpecs:
+    """Tests for PLATFORM_SPECS constant."""
+
+    def test_all_platforms_have_specs(self):
+        """Test that all platforms have specifications defined."""
+        for platform in Platform:
+            assert platform in PLATFORM_SPECS, f"Missing spec for {platform}"
+
+    def test_instagram_feed_spec(self):
+        """Test Instagram Feed specifications."""
+        spec = PLATFORM_SPECS[Platform.INSTAGRAM_FEED]
+        assert spec.platform == Platform.INSTAGRAM_FEED
+        assert spec.image_size == "1080x1080"
+        assert spec.image_aspect_ratio == "1:1"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_size == "1080x1080"
+        assert spec.video_aspect_ratio == "1:1"
+        assert spec.max_video_length_sec == 60
+        assert spec.max_video_size_mb == 4.0
+        assert spec.caption_max_length == 2200
+
+    def test_instagram_story_spec(self):
+        """Test Instagram Story specifications."""
+        spec = PLATFORM_SPECS[Platform.INSTAGRAM_STORY]
+        assert spec.platform == Platform.INSTAGRAM_STORY
+        assert spec.image_size == "1080x1920"
+        assert spec.image_aspect_ratio == "9:16"
+        assert spec.max_image_size_mb == 4.0
+        assert spec.video_size == "1080x1920"
+        assert spec.video_aspect_ratio == "9:16"
+        assert spec.max_video_length_sec == 15
+        assert spec.max_video_size_mb == 4.0
+        assert spec.caption_max_length == 2200
+
+    def test_twitter_spec(self):
+        """Test Twitter specifications."""
+        spec = PLATFORM_SPECS[Platform.TWITTER]
+        assert spec.platform == Platform.TWITTER
+        assert spec.image_size == "1200x675"
+        assert spec.image_aspect_ratio == "16:9"
+        assert spec.max_image_size_mb == 5.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 140
+        assert spec.max_video_size_mb == 512.0
+        assert spec.caption_max_length == 280
+
+    def test_facebook_spec(self):
+        """Test Facebook specifications."""
+        spec = PLATFORM_SPECS[Platform.FACEBOOK]
+        assert spec.platform == Platform.FACEBOOK
+        assert spec.image_size == "1200x630"
+        assert spec.image_aspect_ratio == "1.91:1"
+        assert spec.max_image_size_mb == 8.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 240
+        assert spec.max_video_size_mb == 4096.0
+        assert spec.caption_max_length == 63206
+
+    def test_linkedin_spec(self):
+        """Test LinkedIn specifications."""
+        spec = PLATFORM_SPECS[Platform.LINKEDIN]
+        assert spec.platform == Platform.LINKEDIN
+        assert spec.image_size == "1200x627"
+        assert spec.image_aspect_ratio == "1.91:1"
+        assert spec.max_image_size_mb == 5.0
+        assert spec.video_size == "1280x720"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 600
+        assert spec.max_video_size_mb == 5120.0
+        assert spec.caption_max_length == 3000
+
+    def test_youtube_spec(self):
+        """Test YouTube specifications."""
+        spec = PLATFORM_SPECS[Platform.YOUTUBE]
+        assert spec.platform == Platform.YOUTUBE
+        assert spec.image_size == "1280x720"
+        assert spec.image_aspect_ratio == "16:9"
+        assert spec.max_image_size_mb == 2.0
+        assert spec.video_size == "1920x1080"
+        assert spec.video_aspect_ratio == "16:9"
+        assert spec.max_video_length_sec == 60
+        assert spec.max_video_size_mb == 256.0
+        assert spec.caption_max_length == 5000
 
 
 class TestCaptionTaskConfig:
