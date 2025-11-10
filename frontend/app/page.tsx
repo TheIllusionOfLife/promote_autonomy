@@ -190,13 +190,15 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await strategize({
-        goal,
-        target_platforms: selectedPlatforms,
-        uid: user.uid,
-        brand_style: useBrandStyle && brandStyle ? brandStyle : undefined,
-        referenceImage: referenceImage,
-      });
+      const response = await strategize(
+        {
+          goal,
+          target_platforms: selectedPlatforms,
+          uid: user.uid,
+          brand_style: useBrandStyle && brandStyle ? brandStyle : undefined,
+        },
+        referenceImage
+      );
 
       // Store backend warnings from strategy response
       setStrategizeWarnings(response.warnings || []);

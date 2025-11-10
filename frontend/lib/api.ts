@@ -45,7 +45,10 @@ async function getIdToken(): Promise<string> {
 /**
  * Call Strategy Agent to generate a marketing strategy.
  */
-export async function strategize(request: StrategizeRequest & { referenceImage?: File | null }): Promise<StrategizeResponse> {
+export async function strategize(
+  request: StrategizeRequest,
+  referenceImage?: File | null
+): Promise<StrategizeResponse> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('User not authenticated');
@@ -61,8 +64,8 @@ export async function strategize(request: StrategizeRequest & { referenceImage?:
   if (request.brand_style) {
     formData.append('brand_style', JSON.stringify(request.brand_style));
   }
-  if (request.referenceImage) {
-    formData.append('reference_image', request.referenceImage);
+  if (referenceImage) {
+    formData.append('reference_image', referenceImage);
   }
 
   const response = await fetch(`${STRATEGY_AGENT_URL}/api/strategize`, {

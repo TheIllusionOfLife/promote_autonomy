@@ -130,10 +130,15 @@ async def strategize(
             brand_style_dict = json.loads(brand_style)
             from promote_autonomy_shared.schemas import BrandStyle
             brand_style_obj = BrandStyle(**brand_style_dict)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid brand_style JSON: {str(e)}. Expected valid JSON with colors, tone, and optional tagline.",
+            )
         except Exception as e:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid brand_style format: {str(e)}",
+                detail=f"Invalid brand_style: {str(e)}. Expected format: {{colors: [{{hex_code, name, usage}}], tone, tagline?}}",
             )
 
     # Verify Firebase ID token

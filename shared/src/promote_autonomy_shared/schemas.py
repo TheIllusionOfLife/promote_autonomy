@@ -37,12 +37,18 @@ class BrandColor(BaseModel):
     name: str = Field(
         description="Human-readable color name (e.g., 'Primary Red')",
         min_length=1,
-        max_length=50,
+        max_length=30,
     )
     usage: str = Field(
         default="general",
         description="Usage context: 'primary', 'accent', 'background', or 'general'",
     )
+
+    @field_validator("hex_code")
+    @classmethod
+    def normalize_hex_code(cls, v: str) -> str:
+        """Normalize hex code to uppercase to prevent case-sensitivity issues."""
+        return v.upper()
 
     @field_validator("usage")
     @classmethod
@@ -77,6 +83,22 @@ class BrandStyle(BaseModel):
         max_length=100,
         description="Brand tagline to include in captions (optional)",
     )
+
+    @field_validator("tagline")
+    @classmethod
+    def validate_tagline(cls, v: Optional[str]) -> Optional[str]:
+        """Validate tagline doesn't contain HTML tags to prevent XSS."""
+        if v and ('<' in v or '>' in v):
+            raise ValueError("Tagline cannot contain HTML tags")
+        return v
+
+    @model_validator(mode='after')
+    def validate_primary_color(self):
+        """Ensure at most one primary color is defined."""
+        primary_colors = [c for c in self.colors if c.usage == 'primary']
+        if len(primary_colors) > 1:
+            raise ValueError("Only one color can be marked as primary")
+        return self
 
 
 class Platform(str, Enum):
