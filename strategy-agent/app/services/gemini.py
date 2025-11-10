@@ -4,9 +4,10 @@ import asyncio
 import json
 import logging
 import re
-from typing import Protocol
+from typing import Optional, Protocol
 
 from promote_autonomy_shared.schemas import (
+    BrandStyle,
     CaptionTaskConfig,
     ImageTaskConfig,
     TaskList,
@@ -21,7 +22,9 @@ settings = get_settings()
 class GeminiService(Protocol):
     """Protocol for Gemini service implementations."""
 
-    async def generate_task_list(self, goal: str) -> TaskList:
+    async def generate_task_list(
+        self, goal: str, brand_style: Optional[BrandStyle] = None
+    ) -> TaskList:
         """Generate a task list from a marketing goal."""
         ...
 
@@ -29,9 +32,15 @@ class GeminiService(Protocol):
 class MockGeminiService:
     """Mock implementation for development without real API."""
 
-    async def generate_task_list(self, goal: str) -> TaskList:
+    async def generate_task_list(
+        self, goal: str, brand_style: Optional[BrandStyle] = None
+    ) -> TaskList:
         """Generate a mock task list based on the goal."""
-        logger.info(f"[MOCK] Generating task list for goal: {goal}")
+        brand_info = ""
+        if brand_style:
+            colors = ", ".join([c.name for c in brand_style.colors])
+            brand_info = f" with {brand_style.tone} tone and colors: {colors}"
+        logger.info(f"[MOCK] Generating task list for goal: {goal}{brand_info}")
 
         # Simple heuristic: generate different tasks based on goal keywords
         has_social = any(
@@ -44,6 +53,7 @@ class MockGeminiService:
 
         task_list = TaskList(
             goal=goal,
+            brand_style=brand_style,
             captions=CaptionTaskConfig(
                 n=5 if has_social else 3,
                 style="twitter" if has_social else "engaging",
@@ -79,11 +89,43 @@ class RealGeminiService:
             logger.error(f"Failed to initialize Gemini: {e}")
             raise
 
-    async def generate_task_list(self, goal: str) -> TaskList:
+    async def generate_task_list(
+        self, goal: str, brand_style: Optional[BrandStyle] = None
+    ) -> TaskList:
         """Generate a task list using Gemini API."""
+        # Build brand context for prompt
+        brand_context = ""
+        if brand_style:
+            color_list = ", ".join(
+                [f"{c.name} (#{c.hex_code})" for c in brand_style.colors]
+            )
+            tone_descriptions = {
+                "professional": "corporate, formal language; avoid emojis",
+                "casual": "friendly, conversational tone; emojis are okay",
+                "playful": "fun and energetic; use emojis liberally",
+                "luxury": "sophisticated, elegant language; minimal emojis",
+                "technical": "precise and detailed; use industry terminology",
+            }
+            tone_desc = tone_descriptions.get(
+                brand_style.tone, "professional tone"
+            )
+
+            brand_context = f"""
+Brand Style Requirements:
+- Brand Colors: {color_list}
+- Brand Tone: {brand_style.tone} ({tone_desc})
+- Brand Tagline: {brand_style.tagline or "N/A"}
+
+IMPORTANT: All generated content MUST:
+1. Reference the specified brand colors in image and video prompts
+2. Match the {brand_style.tone} tone in all captions
+3. Include the tagline in at least one caption if provided
+"""
+
         prompt = f"""You are a marketing strategist AI. Given a marketing goal, generate a structured task list.
 
 Marketing Goal: {goal}
+{brand_context}
 
 Generate a JSON object with this structure:
 {{
@@ -98,6 +140,7 @@ Rules:
 - Include image if goal mentions visuals or is substantial
 - Include video only if explicitly mentioned or goal is major campaign
 - Be specific and actionable in prompts
+- Image and video prompts should reference brand colors when provided
 - Return ONLY valid JSON, no markdown formatting
 """
 
@@ -117,6 +160,8 @@ Rules:
 
             # Parse JSON to TaskList
             data = json.loads(response_text)
+            # Add brand_style to the parsed data
+            data["brand_style"] = brand_style.model_dump() if brand_style else None
             task_list = TaskList(**data)
 
             logger.info(f"Generated task list via Gemini: {task_list.model_dump_json()}")
@@ -128,6 +173,7 @@ Rules:
             logger.warning("Falling back to default task list due to API error")
             return TaskList(
                 goal=goal,
+                brand_style=brand_style,
                 captions=CaptionTaskConfig(n=3, style="engaging"),
             )
 

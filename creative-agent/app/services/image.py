@@ -1,10 +1,10 @@
 """Image generation service."""
 
-from typing import Protocol
+from typing import Optional, Protocol
 from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
-from promote_autonomy_shared.schemas import ImageTaskConfig
+from promote_autonomy_shared.schemas import BrandStyle, ImageTaskConfig
 
 from app.core.config import get_settings
 
@@ -13,11 +13,14 @@ from app.core.config import get_settings
 class ImageService(Protocol):
     """Protocol for image generation services."""
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate image from prompt.
 
         Args:
             config: Image generation configuration
+            brand_style: Brand style guide (optional)
 
         Returns:
             Image bytes (PNG format)
@@ -28,13 +31,22 @@ class ImageService(Protocol):
 class MockImageService:
     """Mock image generation for testing."""
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate placeholder image with text overlay."""
         # Parse size (e.g., "1024x1024")
         width, height = map(int, config.size.split("x"))
 
+        # Use brand primary color if available, otherwise default
+        bg_color = (100, 149, 237)  # Default: Cornflower blue
+        if brand_style and brand_style.colors:
+            # Convert hex to RGB
+            hex_code = brand_style.colors[0].hex_code
+            bg_color = tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
+
         # Create image with solid color background
-        img = Image.new("RGB", (width, height), color=(100, 149, 237))  # Cornflower blue
+        img = Image.new("RGB", (width, height), color=bg_color)
 
         # Add text overlay
         draw = ImageDraw.Draw(img)
@@ -130,7 +142,9 @@ class RealImageService:
         vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
         self.model = ImageGenerationModel.from_pretrained(settings.IMAGEN_MODEL)
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate image using Imagen."""
         # Parse size
         width, height = map(int, config.size.split("x"))
@@ -149,9 +163,17 @@ class RealImageService:
         else:
             imagen_aspect_ratio = "1:1"
 
+        # Enhance prompt with brand colors if provided
+        enhanced_prompt = config.prompt
+        if brand_style and brand_style.colors:
+            color_descriptions = ", ".join(
+                [f"{c.name} (#{c.hex_code})" for c in brand_style.colors[:3]]
+            )
+            enhanced_prompt = f"{config.prompt}. Use color palette: {color_descriptions}."
+
         # Generate image
         response = self.model.generate_images(
-            prompt=config.prompt,
+            prompt=enhanced_prompt,
             number_of_images=1,
             aspect_ratio=imagen_aspect_ratio,
         )

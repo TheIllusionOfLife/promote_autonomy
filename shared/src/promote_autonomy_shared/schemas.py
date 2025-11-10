@@ -17,6 +17,68 @@ class JobStatus(str, Enum):
     FAILED = "failed"
 
 
+class BrandTone(str, Enum):
+    """Brand communication tone for consistent messaging."""
+
+    PROFESSIONAL = "professional"  # Corporate, formal language
+    CASUAL = "casual"  # Friendly, approachable tone
+    PLAYFUL = "playful"  # Fun, energetic, emoji-rich
+    LUXURY = "luxury"  # Elegant, sophisticated
+    TECHNICAL = "technical"  # Precise, expert terminology
+
+
+class BrandColor(BaseModel):
+    """Brand color specification with hex code and usage context."""
+
+    hex_code: str = Field(
+        description="6-digit hex color code without # prefix (e.g., 'FF5733')",
+        pattern=r"^[0-9A-Fa-f]{6}$",
+    )
+    name: str = Field(
+        description="Human-readable color name (e.g., 'Primary Red')",
+        min_length=1,
+        max_length=50,
+    )
+    usage: str = Field(
+        default="general",
+        description="Usage context: 'primary', 'accent', 'background', or 'general'",
+    )
+
+    @field_validator("usage")
+    @classmethod
+    def validate_usage(cls, v: str) -> str:
+        """Validate usage is one of the allowed values."""
+        allowed = ["primary", "accent", "background", "general"]
+        if v not in allowed:
+            raise ValueError(
+                f"Invalid usage '{v}'. Must be one of: {', '.join(allowed)}"
+            )
+        return v
+
+
+class BrandStyle(BaseModel):
+    """Brand style guide configuration for consistent asset generation."""
+
+    colors: list[BrandColor] = Field(
+        description="Brand colors (1-5 colors)",
+        min_length=1,
+        max_length=5,
+    )
+    tone: BrandTone = Field(
+        default=BrandTone.PROFESSIONAL,
+        description="Brand communication tone",
+    )
+    logo_url: Optional[str] = Field(
+        default=None,
+        description="URL to brand logo in Cloud Storage (optional)",
+    )
+    tagline: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Brand tagline to include in captions (optional)",
+    )
+
+
 class CaptionTaskConfig(BaseModel):
     """Configuration for caption generation task."""
 
@@ -73,6 +135,10 @@ class TaskList(BaseModel):
     """Task list defining what assets to generate."""
 
     goal: str = Field(description="High-level marketing goal")
+    brand_style: Optional[BrandStyle] = Field(
+        default=None,
+        description="Brand style guide for consistent asset generation (optional)",
+    )
     captions: Optional[CaptionTaskConfig] = Field(
         default=None,
         description="Caption generation configuration",

@@ -24,8 +24,29 @@ export interface VideoTaskConfig {
   duration_sec: number;
 }
 
+export type BrandTone =
+  | 'professional'
+  | 'casual'
+  | 'playful'
+  | 'luxury'
+  | 'technical';
+
+export interface BrandColor {
+  hex_code: string;
+  name: string;
+  usage: 'primary' | 'accent' | 'background' | 'general';
+}
+
+export interface BrandStyle {
+  colors: BrandColor[];
+  tone: BrandTone;
+  logo_url?: string;
+  tagline?: string;
+}
+
 export interface TaskList {
   goal: string;
+  brand_style?: BrandStyle;
   captions?: CaptionTaskConfig;
   image?: ImageTaskConfig;
   video?: VideoTaskConfig;
@@ -48,6 +69,7 @@ export interface Job {
 export interface StrategizeRequest {
   goal: string;
   uid: string;
+  brand_style?: BrandStyle;
 }
 
 export interface StrategizeResponse {

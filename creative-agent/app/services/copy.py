@@ -2,9 +2,9 @@
 
 import asyncio
 import re
-from typing import Protocol
+from typing import Optional, Protocol
 
-from promote_autonomy_shared.schemas import CaptionTaskConfig
+from promote_autonomy_shared.schemas import BrandStyle, CaptionTaskConfig
 
 from app.core.config import get_settings
 
@@ -12,12 +12,18 @@ from app.core.config import get_settings
 class CopyService(Protocol):
     """Protocol for copy generation services."""
 
-    async def generate_captions(self, config: CaptionTaskConfig, goal: str) -> list[str]:
+    async def generate_captions(
+        self,
+        config: CaptionTaskConfig,
+        goal: str,
+        brand_style: Optional[BrandStyle] = None,
+    ) -> list[str]:
         """Generate social media captions.
 
         Args:
             config: Caption generation configuration
             goal: Marketing goal for context
+            brand_style: Brand style guide (optional)
 
         Returns:
             List of generated captions
@@ -28,11 +34,29 @@ class CopyService(Protocol):
 class MockCopyService:
     """Mock copy generation for testing."""
 
-    async def generate_captions(self, config: CaptionTaskConfig, goal: str) -> list[str]:
+    async def generate_captions(
+        self,
+        config: CaptionTaskConfig,
+        goal: str,
+        brand_style: Optional[BrandStyle] = None,
+    ) -> list[str]:
         """Generate mock captions based on goal keywords."""
         # Simple heuristic: use first three words from goal
         top_words = " ".join(goal.split()[:3])
-        base_caption = f"✨ {top_words}"
+
+        # Adjust emoji usage based on brand tone
+        emoji = "✨"
+        if brand_style:
+            tone_emojis = {
+                "professional": "",
+                "casual": "👋",
+                "playful": "🎉",
+                "luxury": "✨",
+                "technical": "⚙️",
+            }
+            emoji = tone_emojis.get(brand_style.tone, "✨")
+
+        base_caption = f"{emoji} {top_words}" if emoji else top_words
         captions = []
 
         for i in range(config.n):
@@ -44,6 +68,10 @@ class MockCopyService:
                 captions.append(f"{base_caption} 😂 Funny take #{i + 1}")
             else:
                 captions.append(f"{base_caption} - Caption #{i + 1}")
+
+        # Add tagline to first caption if provided
+        if brand_style and brand_style.tagline and captions:
+            captions[0] = f"{captions[0]} | {brand_style.tagline}"
 
         return captions
 
@@ -60,18 +88,47 @@ class RealCopyService:
         vertexai.init(project=self.settings.PROJECT_ID, location=self.settings.LOCATION)
         self.model = GenerativeModel("gemini-2.5-flash")
 
-    async def generate_captions(self, config: CaptionTaskConfig, goal: str) -> list[str]:
+    async def generate_captions(
+        self,
+        config: CaptionTaskConfig,
+        goal: str,
+        brand_style: Optional[BrandStyle] = None,
+    ) -> list[str]:
         """Generate captions using Gemini."""
+        # Build brand context
+        brand_context = ""
+        if brand_style:
+            tone_instructions = {
+                "professional": "Use formal, corporate language. Avoid emojis.",
+                "casual": "Use friendly, conversational tone. Emojis are okay.",
+                "playful": "Be fun and energetic. Use emojis liberally.",
+                "luxury": "Use sophisticated, elegant language. Minimal emojis.",
+                "technical": "Be precise and detailed. Use industry terminology.",
+            }
+            tone_instruction = tone_instructions.get(
+                brand_style.tone, "Use professional tone."
+            )
+
+            brand_context = f"""
+Brand Guidelines:
+- Tone: {brand_style.tone} - {tone_instruction}
+- Tagline: {brand_style.tagline or "N/A"}
+
+IMPORTANT: Include the tagline in at least one caption if provided.
+"""
+
         prompt = f"""Generate {config.n} social media captions for this marketing goal:
 
 Goal: {goal}
 Style: {config.style}
+{brand_context}
 
 Requirements:
 - Each caption should be engaging and on-brand
 - Keep captions concise (under 280 characters)
-- Include relevant emojis if appropriate for the style
+- Include relevant emojis if appropriate for the style and tone
 - Vary the approach across captions
+- Match the specified brand tone
 
 Return ONLY the captions, one per line, numbered 1-{config.n}."""
 

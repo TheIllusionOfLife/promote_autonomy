@@ -76,7 +76,9 @@ async def strategize(
 
         # Generate task list via Gemini
         gemini_service = get_gemini_service()
-        task_list = await gemini_service.generate_task_list(request.goal)
+        task_list = await gemini_service.generate_task_list(
+            request.goal, request.brand_style
+        )
 
         # Create job in Firestore
         firestore_service = get_firestore_service()

@@ -5,7 +5,8 @@ import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { strategize, approveJob } from '@/lib/api';
-import type { Job } from '@/lib/types';
+import type { Job, BrandStyle } from '@/lib/types';
+import BrandStyleForm from '@/components/BrandStyleForm';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -14,6 +15,8 @@ export default function Home() {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
   const [actualCaptions, setActualCaptions] = useState<string[]>([]);
+  const [useBrandStyle, setUseBrandStyle] = useState(false);
+  const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
 
   // Auto sign-in anonymously
   useEffect(() => {
@@ -116,7 +119,11 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await strategize(goal);
+      const response = await strategize({
+        goal,
+        uid: user.uid,
+        brand_style: useBrandStyle && brandStyle ? brandStyle : undefined,
+      });
       // The job will be populated via Firestore listener
       setCurrentJob({
         event_id: response.event_id,
@@ -179,6 +186,38 @@ export default function Home() {
               disabled={loading}
             />
           </div>
+
+          {/* Brand Style Guide Toggle */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={useBrandStyle}
+                onChange={(e) => {
+                  setUseBrandStyle(e.target.checked);
+                  if (!e.target.checked) {
+                    setBrandStyle(null);
+                  } else if (!brandStyle) {
+                    // Initialize with default brand style
+                    setBrandStyle({
+                      colors: [{ hex_code: '000000', name: 'Primary', usage: 'primary' }],
+                      tone: 'professional',
+                    });
+                  }
+                }}
+                disabled={loading}
+              />
+              <span style={{ fontWeight: 500 }}>Use Brand Style Guide</span>
+            </label>
+          </div>
+
+          {/* Brand Style Form */}
+          {useBrandStyle && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <BrandStyleForm value={brandStyle} onChange={setBrandStyle} />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading || !goal.trim()}
