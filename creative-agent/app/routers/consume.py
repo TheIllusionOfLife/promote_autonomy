@@ -99,6 +99,10 @@ def _validate_gcs_url(url: str) -> bool:
 
         # Verify path starts with expected bucket
         expected_bucket = settings.STORAGE_BUCKET
+        if not expected_bucket:
+            logger.error("STORAGE_BUCKET configuration is not set")
+            return False
+
         if not parsed.path.startswith(f'/{expected_bucket}/'):
             logger.warning(
                 f"URL not in expected GCS bucket '{expected_bucket}': {url}"
@@ -269,7 +273,13 @@ Return results in JSON format with URLs for all generated assets:
                     return event.content.parts[0].text
             return ""  # Empty response if no final event
 
-        result = await asyncio.to_thread(run_agent)
+        # Execute with timeout to prevent hanging indefinitely
+        # 5 minutes should be sufficient for coordination + 3 parallel tool calls
+        try:
+            result = await asyncio.wait_for(asyncio.to_thread(run_agent), timeout=300)
+        except asyncio.TimeoutError:
+            logger.error(f"[ADK] Coordinator timed out after 300s for job {event_id}")
+            raise RuntimeError("ADK coordination timed out after 5 minutes")
 
         logger.info(f"[ADK] Coordinator completed for job {event_id}")
         logger.debug(f"[ADK] Raw result: {result}")
@@ -681,8 +691,10 @@ async def consume_task(
 
         # Return 200 to acknowledge message (prevent Pub/Sub retries)
         # The job is already marked as FAILED in Firestore
+        # Sanitize error message to avoid leaking sensitive information
+        error_message = str(e) if settings.LOG_LEVEL == "DEBUG" else "Asset generation failed"
         return {
             "status": "failed",
             "event_id": event_id,
-            "error": str(e)
+            "error": error_message
         }
