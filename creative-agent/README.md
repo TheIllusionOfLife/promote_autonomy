@@ -10,6 +10,7 @@ Creative Agent is a Pub/Sub push consumer that generates marketing assets (copy,
 - **Cloud Storage**: Uploads all assets to Google Cloud Storage
 - **Idempotent Processing**: Safely handles duplicate Pub/Sub messages
 - **Mock-First Development**: Test without API costs using mock services
+- **ADK Orchestration** (Experimental): Agent-based orchestration using Google's Agent Development Kit
 
 ## Architecture
 
@@ -67,6 +68,60 @@ The Creative Agent uses environment flags to switch between mock and real servic
 - `USE_MOCK_VEO=true`: Mock video generation (text briefs only)
 - `USE_MOCK_FIRESTORE=true`: In-memory Firestore
 - `USE_MOCK_STORAGE=true`: In-memory file storage
+
+### ADK Orchestration (Experimental)
+
+The Creative Agent supports two orchestration modes:
+
+#### Legacy Orchestration (Default)
+- Uses `asyncio.gather()` for parallel asset generation
+- Stable and well-tested
+- Lower latency (~10% faster)
+
+#### ADK Orchestration (Experimental)
+- Uses Google's Agent Development Kit for multi-agent coordination
+- Agent hierarchy: Creative Director → Copy Writer, Image Creator, Video Producer
+- Built-in evaluation framework
+- Easy to extend with new agents (e.g., Brand Agent)
+
+**Enable ADK orchestration:**
+```bash
+# .env
+USE_ADK_ORCHESTRATION=true
+ADK_ROLLOUT_PERCENTAGE=100  # 0-100, percentage of jobs to use ADK
+```
+
+**Gradual rollout:**
+```bash
+# Start with 10% traffic
+USE_ADK_ORCHESTRATION=true
+ADK_ROLLOUT_PERCENTAGE=10
+
+# Monitor metrics, then increase
+ADK_ROLLOUT_PERCENTAGE=50
+
+# Full rollout
+ADK_ROLLOUT_PERCENTAGE=100
+```
+
+**Run ADK evaluations:**
+```bash
+# Test agent quality
+adk eval app/agents/coordinator.py eval_sets/creative_coordinator_basic.evalset.json
+
+# View results
+cat eval_results.json
+```
+
+**Architecture with ADK:**
+```
+Creative Coordinator (LLM Agent)
+├── Copy Writer Agent → generate_captions_tool
+├── Image Creator Agent → generate_image_tool
+└── Video Producer Agent → generate_video_tool
+```
+
+See `ADK_IMPLEMENTATION_PLAN.md` in the root directory for full details.
 
 ## Deployment
 

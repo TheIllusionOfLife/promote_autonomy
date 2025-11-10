@@ -2,8 +2,10 @@
 
 import asyncio
 import base64
+import hashlib
 import json
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Header, Request
@@ -19,6 +21,9 @@ from app.services.image import get_image_service
 from app.services.video import get_video_service
 from app.services.firestore import get_firestore_service
 from app.services.storage import get_storage_service
+
+# ADK imports
+from app.agents.coordinator import get_creative_coordinator
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -37,6 +42,295 @@ class MessageData(BaseModel):
 
     event_id: str
     task_list: TaskList
+
+
+def should_use_adk(event_id: str) -> bool:
+    """Determine if this job should use ADK orchestration.
+
+    Uses deterministic hash of event_id for consistent behavior across retries.
+
+    Args:
+        event_id: Job identifier
+
+    Returns:
+        True if ADK should be used, False for legacy orchestration
+    """
+    if not settings.USE_ADK_ORCHESTRATION:
+        return False
+
+    # Deterministic selection based on event_id hash
+    hash_val = int(hashlib.md5(event_id.encode()).hexdigest(), 16)
+    return (hash_val % 100) < settings.ADK_ROLLOUT_PERCENTAGE
+
+
+def _extract_url_from_text(text: str, asset_type: str) -> str | None:
+    """Extract Cloud Storage URL from ADK text response.
+
+    Args:
+        text: ADK agent response text
+        asset_type: Type of asset (captions, image, video)
+
+    Returns:
+        Extracted URL or None if not found
+    """
+    # Look for patterns like "captions_url: https://..." or "captions_url": "https://..."
+    patterns = [
+        f'{asset_type}_url["\']?:\s*["\']?(https://storage\\.googleapis\\.com[^\\s"\']+)',
+        f'{asset_type}_url["\']?\\s*=\\s*["\']?(https://storage\\.googleapis\\.com[^\\s"\']+)',
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).rstrip('",\'')
+
+    return None
+
+
+async def _generate_assets_with_adk(
+    event_id: str,
+    task_list: TaskList,
+    firestore_service: Any,
+) -> dict[str, str]:
+    """Generate assets using ADK multi-agent orchestration.
+
+    Args:
+        event_id: Job identifier
+        task_list: Task configuration
+        firestore_service: Firestore service for storing warnings
+
+    Returns:
+        Dict with keys: captions_url, image_url, video_url (as available)
+    """
+    logger.info(f"[ADK] Starting asset generation for job {event_id}")
+
+    # Get ADK coordinator
+    coordinator = get_creative_coordinator()
+
+    # Prepare input for coordinator
+    # Format as a structured prompt
+    tasks_description = []
+
+    if task_list.captions:
+        tasks_description.append(
+            f"1. Generate {task_list.captions.n} captions in '{task_list.captions.style}' style"
+        )
+
+    if task_list.image:
+        tasks_description.append(
+            f"2. Generate image: {task_list.image.prompt[:100]} "
+            f"(size: {task_list.image.size}, aspect_ratio: {task_list.image.aspect_ratio})"
+        )
+
+    if task_list.video:
+        tasks_description.append(
+            f"3. Generate video: {task_list.video.prompt[:100]} "
+            f"(duration: {task_list.video.duration_sec}s, aspect_ratio: {task_list.video.aspect_ratio})"
+        )
+
+    # Create prompt for coordinator
+    prompt = f"""Generate creative assets for this marketing campaign:
+
+Goal: {task_list.goal}
+Target Platforms: {', '.join(p.value for p in task_list.target_platforms)}
+Event ID: {event_id}
+
+Tasks to complete:
+{chr(10).join(tasks_description)}
+
+IMPORTANT:
+- For captions: Use config={task_list.captions.model_dump() if task_list.captions else {}}
+- For image: Use config={task_list.image.model_dump() if task_list.image else {}}
+- For video: Use config={task_list.video.model_dump() if task_list.video else {}}
+
+Delegate each task to the appropriate specialized agent (copy_writer, image_creator, video_producer).
+Run all tasks in parallel for efficiency.
+
+Return results in JSON format with URLs for all generated assets:
+{{
+  "captions_url": "https://storage.googleapis.com/...",
+  "image_url": "https://storage.googleapis.com/...",
+  "video_url": "https://storage.googleapis.com/..."
+}}"""
+
+    try:
+        # Run ADK coordinator
+        # Note: ADK's run() is synchronous, so wrap in thread
+        result = await asyncio.to_thread(coordinator.run, prompt)
+
+        logger.info(f"[ADK] Coordinator completed for job {event_id}")
+        logger.debug(f"[ADK] Raw result: {result}")
+
+        # Parse result - try to extract URLs from text response
+        outputs = {}
+
+        # Try to parse as JSON first
+        try:
+            # Look for JSON in the response
+            json_match = re.search(r'\{[^}]*"captions_url"[^}]*\}', result, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group(0))
+                if "captions_url" in parsed:
+                    outputs["captions_url"] = parsed["captions_url"]
+                if "image_url" in parsed:
+                    outputs["image_url"] = parsed["image_url"]
+                if "video_url" in parsed:
+                    outputs["video_url"] = parsed["video_url"]
+        except (json.JSONDecodeError, AttributeError):
+            # Fall back to regex extraction
+            if task_list.captions:
+                url = _extract_url_from_text(result, "captions")
+                if url:
+                    outputs["captions_url"] = url
+
+            if task_list.image:
+                url = _extract_url_from_text(result, "image")
+                if url:
+                    outputs["image_url"] = url
+
+            if task_list.video:
+                url = _extract_url_from_text(result, "video")
+                if url:
+                    outputs["video_url"] = url
+
+        # Check for warnings in result (especially for video size)
+        if "warning" in result.lower():
+            warning_match = re.search(r'"warning":\s*"([^"]+)"', result)
+            if warning_match:
+                warning_msg = warning_match.group(1)
+                try:
+                    await firestore_service.add_job_warning(event_id, warning_msg)
+                    logger.warning(f"[ADK] Stored warning for job {event_id}: {warning_msg}")
+                except Exception as e:
+                    logger.error(f"[ADK] Failed to store warning for job {event_id}: {e}")
+
+        logger.info(f"[ADK] Asset generation completed for job {event_id}: {list(outputs.keys())}")
+        return outputs
+
+    except Exception as e:
+        logger.error(f"[ADK] Asset generation failed for job {event_id}: {e}", exc_info=True)
+        raise
+
+
+async def _generate_assets_legacy(
+    event_id: str,
+    task_list: TaskList,
+    firestore_service: Any,
+    storage_service: Any,
+    copy_service: Any,
+    image_service: Any,
+    video_service: Any,
+) -> dict[str, str]:
+    """Generate assets using legacy asyncio.gather() orchestration.
+
+    This is the current implementation, preserved for backward compatibility.
+
+    Args:
+        event_id: Job identifier
+        task_list: Task configuration
+        firestore_service: Firestore service
+        storage_service: Storage service
+        copy_service: Copy generation service
+        image_service: Image generation service
+        video_service: Video generation service
+
+    Returns:
+        Dict with keys: captions_url, image_url, video_url (as available)
+    """
+    # Define async functions for each asset type
+    async def generate_captions_task():
+        """Generate and upload captions."""
+        if not task_list.captions:
+            return None
+
+        logger.info(f"[LEGACY] Generating captions for job {event_id}")
+        captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
+        captions_json = json.dumps(captions, indent=2).encode("utf-8")
+        url = await storage_service.upload_file(
+            event_id=event_id,
+            filename="captions.json",
+            content=captions_json,
+            content_type="application/json",
+        )
+        logger.info(f"[LEGACY] Captions generated for job {event_id}")
+        return url
+
+    async def generate_image_task():
+        """Generate and upload image."""
+        if not task_list.image:
+            return None
+
+        logger.info(f"[LEGACY] Generating image for job {event_id}")
+        image_bytes = await image_service.generate_image(task_list.image)
+
+        # Determine format based on compression
+        if task_list.image.max_file_size_mb:
+            filename = "image.jpg"
+            content_type = "image/jpeg"
+        else:
+            filename = "image.png"
+            content_type = "image/png"
+
+        url = await storage_service.upload_file(
+            event_id=event_id,
+            filename=filename,
+            content=image_bytes,
+            content_type=content_type,
+        )
+        logger.info(f"[LEGACY] Image generated for job {event_id}")
+        return url
+
+    async def generate_video_task():
+        """Generate and upload video."""
+        if not task_list.video:
+            return None
+
+        logger.info(f"[LEGACY] Generating video for job {event_id}")
+        video_bytes = await video_service.generate_video(task_list.video)
+
+        # Check if video exceeds size limit and store warning
+        if task_list.video.max_file_size_mb:
+            size_mb = len(video_bytes) / (1024 * 1024)
+            if size_mb > task_list.video.max_file_size_mb:
+                warning_msg = (
+                    f"Generated video size ({size_mb:.2f} MB) exceeds "
+                    f"platform limit ({task_list.video.max_file_size_mb} MB). "
+                    f"This video may not upload successfully to the target platform."
+                )
+                try:
+                    await firestore_service.add_job_warning(event_id, warning_msg)
+                    logger.warning(f"[LEGACY] Stored warning for job {event_id}: {warning_msg}")
+                except Exception as e:
+                    logger.error(f"[LEGACY] Failed to store warning for job {event_id}: {e}")
+
+        url = await storage_service.upload_file(
+            event_id=event_id,
+            filename="video.mp4",
+            content=video_bytes,
+            content_type="video/mp4",
+        )
+        logger.info(f"[LEGACY] Video generated for job {event_id}")
+        return url
+
+    # Generate all assets in parallel
+    logger.info(f"[LEGACY] Starting parallel asset generation for job {event_id}")
+    captions_url, image_url, video_url = await asyncio.gather(
+        generate_captions_task(),
+        generate_image_task(),
+        generate_video_task(),
+    )
+    logger.info(f"[LEGACY] All assets generated for job {event_id}")
+
+    # Build outputs dict
+    outputs = {}
+    if captions_url:
+        outputs["captions_url"] = captions_url
+    if image_url:
+        outputs["image_url"] = image_url
+    if video_url:
+        outputs["video_url"] = video_url
+
+    return outputs
 
 
 @router.post("/consume")
@@ -125,114 +419,46 @@ async def consume_task(
         )
 
     try:
-        # Define async functions for each asset type
-        async def generate_captions_task():
-            """Generate and upload captions."""
-            if not task_list.captions:
-                return None
-
-            logger.info(f"Generating captions for job {event_id}")
-            captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
-            captions_json = json.dumps(captions, indent=2).encode("utf-8")
-            url = await storage_service.upload_file(
+        # FEATURE FLAG: Choose orchestration method
+        if should_use_adk(event_id):
+            logger.info(f"[ADK] Using ADK orchestration for job {event_id}")
+            outputs = await _generate_assets_with_adk(
                 event_id=event_id,
-                filename="captions.json",
-                content=captions_json,
-                content_type="application/json",
+                task_list=task_list,
+                firestore_service=firestore_service,
             )
-            logger.info(f"Captions generated for job {event_id}")
-            return url
-
-        async def generate_image_task():
-            """Generate and upload image."""
-            if not task_list.image:
-                return None
-
-            logger.info(f"Generating image for job {event_id}")
-            image_bytes = await image_service.generate_image(task_list.image)
-
-            # Determine format based on compression
-            # When max_file_size_mb is set, images are JPEG (compressed)
-            # Otherwise, images are PNG (lossless)
-            if task_list.image.max_file_size_mb:
-                filename = "image.jpg"
-                content_type = "image/jpeg"
-            else:
-                filename = "image.png"
-                content_type = "image/png"
-
-            url = await storage_service.upload_file(
+        else:
+            logger.info(f"[LEGACY] Using legacy orchestration for job {event_id}")
+            outputs = await _generate_assets_legacy(
                 event_id=event_id,
-                filename=filename,
-                content=image_bytes,
-                content_type=content_type,
+                task_list=task_list,
+                firestore_service=firestore_service,
+                storage_service=storage_service,
+                copy_service=copy_service,
+                image_service=image_service,
+                video_service=video_service,
             )
-            logger.info(f"Image generated for job {event_id}")
-            return url
-
-        async def generate_video_task():
-            """Generate and upload video."""
-            if not task_list.video:
-                return None
-
-            logger.info(f"Generating video for job {event_id}")
-            video_bytes = await video_service.generate_video(task_list.video)
-
-            # Check if video exceeds size limit and store warning
-            # Warning storage is non-critical - if it fails, we still return the video
-            if task_list.video.max_file_size_mb:
-                size_mb = len(video_bytes) / (1024 * 1024)
-                if size_mb > task_list.video.max_file_size_mb:
-                    warning_msg = (
-                        f"Generated video size ({size_mb:.2f} MB) exceeds "
-                        f"platform limit ({task_list.video.max_file_size_mb} MB). "
-                        f"This video may not upload successfully to the target platform."
-                    )
-                    try:
-                        await firestore_service.add_job_warning(event_id, warning_msg)
-                        logger.warning(f"Stored warning for job {event_id}: {warning_msg}")
-                    except Exception as e:
-                        # Log but don't fail job if warning storage fails
-                        logger.error(f"Failed to store warning for job {event_id}: {e}")
-
-            url = await storage_service.upload_file(
-                event_id=event_id,
-                filename="video.mp4",
-                content=video_bytes,
-                content_type="video/mp4",
-            )
-            logger.info(f"Video generated for job {event_id}")
-            return url
-
-        # Generate all assets in parallel (2-3x faster)
-        logger.info(f"Starting parallel asset generation for job {event_id}")
-        captions_url, image_url, video_url = await asyncio.gather(
-            generate_captions_task(),
-            generate_image_task(),
-            generate_video_task(),
-        )
-        logger.info(f"All assets generated for job {event_id}")
 
         # Mark job as completed with all asset URLs
         await firestore_service.update_job_status(
             event_id=event_id,
             status=JobStatus.COMPLETED,
-            captions_url=captions_url,
-            image_url=image_url,
-            video_url=video_url,
+            captions_url=outputs.get("captions_url"),
+            image_url=outputs.get("image_url"),
+            video_url=outputs.get("video_url"),
         )
         logger.info(f"Job {event_id} completed successfully")
 
-        # Build response outputs
-        outputs = {}
-        if captions_url:
-            outputs["captions"] = captions_url
-        if image_url:
-            outputs["image"] = image_url
-        if video_url:
-            outputs["video"] = video_url
+        # Build response outputs (normalize key names)
+        response_outputs = {}
+        if outputs.get("captions_url"):
+            response_outputs["captions"] = outputs["captions_url"]
+        if outputs.get("image_url"):
+            response_outputs["image"] = outputs["image_url"]
+        if outputs.get("video_url"):
+            response_outputs["video"] = outputs["video_url"]
 
-        return {"status": "success", "event_id": event_id, "outputs": outputs}
+        return {"status": "success", "event_id": event_id, "outputs": response_outputs}
 
     except Exception as e:
         # Log error with full traceback

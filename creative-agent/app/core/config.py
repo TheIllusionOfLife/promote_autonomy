@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     USE_MOCK_FIRESTORE: bool = False
     USE_MOCK_STORAGE: bool = False
 
+    # ADK Integration Flags
+    USE_ADK_ORCHESTRATION: bool = False  # Use ADK for agent orchestration (experimental)
+    ADK_ROLLOUT_PERCENTAGE: int = 0  # Percentage of jobs to use ADK orchestration (0-100)
+
     # Server Configuration
     PORT: int = 8001
     LOG_LEVEL: str = "INFO"
