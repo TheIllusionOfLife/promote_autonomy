@@ -1,6 +1,14 @@
 """Integration tests for ADK coordinator."""
 
 import pytest
+
+# Check if ADK is available
+try:
+    from google.adk.agents import LlmAgent
+    ADK_AVAILABLE = True
+except ImportError:
+    ADK_AVAILABLE = False
+
 from app.core.config import get_settings
 from app.agents.coordinator import (
     create_copy_agent,
@@ -11,6 +19,9 @@ from app.agents.coordinator import (
 )
 
 settings = get_settings()
+
+# Skip all tests if ADK is not installed
+pytestmark = pytest.mark.skipif(not ADK_AVAILABLE, reason="google-adk not installed")
 
 
 def test_create_copy_agent():

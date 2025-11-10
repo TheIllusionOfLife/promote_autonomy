@@ -3,7 +3,6 @@
 import logging
 from functools import lru_cache
 
-from google.adk.agents import LlmAgent
 from promote_autonomy_shared.schemas import TaskList
 
 from app.agents.tools import (
@@ -17,12 +16,14 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def create_copy_agent() -> LlmAgent:
+def create_copy_agent():
     """Create ADK agent for caption generation.
 
     Returns:
         LlmAgent configured for copy writing with Gemini
     """
+    from google.adk.agents import LlmAgent
+
     return LlmAgent(
         name="copy_writer",
         model=settings.GEMINI_MODEL,
@@ -40,12 +41,14 @@ Always call the generate_captions_tool to generate captions.""",
     )
 
 
-def create_image_agent() -> LlmAgent:
+def create_image_agent():
     """Create ADK agent for image generation.
 
     Returns:
         LlmAgent configured for image creation with Imagen
     """
+    from google.adk.agents import LlmAgent
+
     return LlmAgent(
         name="image_creator",
         model=settings.GEMINI_MODEL,
@@ -63,12 +66,14 @@ Always call the generate_image_tool to generate images.""",
     )
 
 
-def create_video_agent() -> LlmAgent:
+def create_video_agent():
     """Create ADK agent for video generation.
 
     Returns:
         LlmAgent configured for video production with Veo
     """
+    from google.adk.agents import LlmAgent
+
     return LlmAgent(
         name="video_producer",
         model=settings.GEMINI_MODEL,
@@ -86,7 +91,7 @@ Always call the generate_video_tool to generate videos.""",
     )
 
 
-def create_creative_coordinator() -> LlmAgent:
+def create_creative_coordinator():
     """Create ADK coordinator agent that orchestrates all creative agents.
 
     The coordinator delegates tasks to specialized sub-agents:
@@ -97,6 +102,8 @@ def create_creative_coordinator() -> LlmAgent:
     Returns:
         LlmAgent configured to coordinate creative asset generation
     """
+    from google.adk.agents import LlmAgent
+
     copy_agent = create_copy_agent()
     image_agent = create_image_agent()
     video_agent = create_video_agent()
@@ -133,7 +140,7 @@ Example output format:
 
 
 @lru_cache(maxsize=1)
-def get_creative_coordinator() -> LlmAgent:
+def get_creative_coordinator():
     """Get or create the creative coordinator agent (singleton, thread-safe).
 
     Uses @lru_cache for thread-safe singleton pattern. The coordinator is safe

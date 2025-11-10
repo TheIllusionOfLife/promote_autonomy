@@ -3,11 +3,22 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
+# Check if ADK is available (needed for coordinator to work)
+try:
+    from google.adk.agents import LlmAgent
+    ADK_AVAILABLE = True
+except ImportError:
+    ADK_AVAILABLE = False
+
 from app.agents.tools import (
     generate_captions_tool,
     generate_image_tool,
     generate_video_tool,
 )
+
+# Skip all tests if ADK is not installed (tools tests don't need it but good to be consistent)
+# Note: The tools themselves work without ADK, but they're only used with ADK
+pytestmark = pytest.mark.skipif(not ADK_AVAILABLE, reason="google-adk not installed")
 
 
 @pytest.mark.asyncio
