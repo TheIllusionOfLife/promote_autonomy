@@ -30,7 +30,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=job-approvals,FRONTEND_URL=https://frontend-$PROJECT_ID.$_DEPLOY_REGION.run.app'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=job-approvals,FRONTEND_URL=https://frontend-$PROJECT_NUMBER.$_DEPLOY_REGION.run.app'
       - '--memory'
       - '1Gi'
       - '--timeout'
