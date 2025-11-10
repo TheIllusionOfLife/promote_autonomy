@@ -169,6 +169,10 @@ class TaskList(BaseModel):
     """Task list defining what assets to generate."""
 
     goal: str = Field(description="High-level marketing goal")
+    target_platforms: list[Platform] = Field(
+        description="Target social media platforms for this campaign",
+        min_length=1,
+    )
     captions: Optional[CaptionTaskConfig] = Field(
         default=None,
         description="Caption generation configuration",
@@ -183,17 +187,27 @@ class TaskList(BaseModel):
     )
 
     @model_validator(mode='after')
-    def at_least_one_task(self):
-        """Validate that at least one task type is specified."""
+    def validate_task_list(self):
+        """Validate task list constraints."""
+        # At least one task must be specified
         if not (self.captions or self.image or self.video):
             raise ValueError(
                 "At least one task (captions, image, or video) must be specified. "
                 "Cannot create a job with no assets to generate."
             )
+
+        # At least one platform must be selected
+        if not self.target_platforms:
+            raise ValueError(
+                "At least one platform must be selected. "
+                "Cannot create a campaign without target platforms."
+            )
+
         return self
 
     model_config = {"json_schema_extra": {"example": {
         "goal": "Increase awareness of new feature",
+        "target_platforms": ["instagram_feed", "twitter"],
         "captions": {"n": 3, "style": "twitter"},
         "image": {
             "prompt": "Clean blue modern promo visual",

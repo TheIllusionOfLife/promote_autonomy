@@ -271,11 +271,13 @@ class TestTaskList:
         """Test task list with all task types."""
         task_list = TaskList(
             goal="Launch new feature",
+            target_platforms=[Platform.INSTAGRAM_FEED, Platform.TWITTER],
             captions=CaptionTaskConfig(n=3, style="twitter"),
             image=ImageTaskConfig(prompt="Blue visual", size="1024x1024"),
             video=VideoTaskConfig(prompt="Demo video", duration_sec=20),
         )
         assert task_list.goal == "Launch new feature"
+        assert task_list.target_platforms == [Platform.INSTAGRAM_FEED, Platform.TWITTER]
         assert task_list.captions is not None
         assert task_list.captions.n == 3
         assert task_list.image is not None
@@ -283,13 +285,62 @@ class TestTaskList:
         assert task_list.video is not None
         assert task_list.video.duration_sec == 20
 
+    def test_task_list_requires_target_platforms(self):
+        """Test that target_platforms is required."""
+        with pytest.raises(ValidationError) as exc_info:
+            TaskList(
+                goal="Test goal",
+                captions=CaptionTaskConfig(n=1),
+            )
+        assert "target_platforms" in str(exc_info.value).lower()
+
+    def test_task_list_requires_at_least_one_platform(self):
+        """Test that at least one platform must be selected."""
+        with pytest.raises(ValidationError) as exc_info:
+            TaskList(
+                goal="Test goal",
+                target_platforms=[],
+                captions=CaptionTaskConfig(n=1),
+            )
+        error_msg = str(exc_info.value).lower()
+        assert "target_platforms" in error_msg
+        assert "at least 1" in error_msg
+
+    def test_task_list_single_platform(self):
+        """Test task list with single platform."""
+        task_list = TaskList(
+            goal="Instagram only campaign",
+            target_platforms=[Platform.INSTAGRAM_FEED],
+            captions=CaptionTaskConfig(n=5),
+        )
+        assert len(task_list.target_platforms) == 1
+        assert task_list.target_platforms[0] == Platform.INSTAGRAM_FEED
+
+    def test_task_list_multiple_platforms(self):
+        """Test task list with multiple platforms."""
+        platforms = [
+            Platform.INSTAGRAM_FEED,
+            Platform.INSTAGRAM_STORY,
+            Platform.TWITTER,
+            Platform.FACEBOOK,
+            Platform.LINKEDIN,
+        ]
+        task_list = TaskList(
+            goal="Multi-platform campaign",
+            target_platforms=platforms,
+            captions=CaptionTaskConfig(n=7),
+            image=ImageTaskConfig(prompt="Product shot"),
+        )
+        assert len(task_list.target_platforms) == 5
+        assert task_list.target_platforms == platforms
+
     def test_task_list_only_goal(self):
         """Test task list with only goal fails validation."""
         import pytest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
-            TaskList(goal="Simple goal")
+            TaskList(goal="Simple goal", target_platforms=[Platform.TWITTER])
 
         assert "At least one task" in str(exc_info.value)
 
@@ -297,8 +348,10 @@ class TestTaskList:
         """Test task list with some tasks defined."""
         task_list = TaskList(
             goal="Partial tasks",
+            target_platforms=[Platform.LINKEDIN],
             captions=CaptionTaskConfig(n=5),
         )
+        assert task_list.target_platforms == [Platform.LINKEDIN]
         assert task_list.captions is not None
         assert task_list.image is None
         assert task_list.video is None
@@ -307,10 +360,12 @@ class TestTaskList:
         """Test that task list can be serialized to JSON."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.LINKEDIN, Platform.FACEBOOK],
             captions=CaptionTaskConfig(n=2, style="linkedin"),
         )
         json_data = task_list.model_dump()
         assert json_data["goal"] == "Test"
+        assert json_data["target_platforms"] == ["linkedin", "facebook"]
         assert json_data["captions"]["n"] == 2
         assert json_data["captions"]["style"] == "linkedin"
 
@@ -339,6 +394,7 @@ class TestJob:
         """Test job with minimal required fields."""
         task_list = TaskList(
             goal="Test goal",
+            target_platforms=[Platform.INSTAGRAM_FEED],
             captions=CaptionTaskConfig(n=1),
         )
         job = Job(
@@ -353,6 +409,7 @@ class TestJob:
         assert job.uid == "user123"
         assert job.status == JobStatus.PENDING_APPROVAL
         assert job.task_list.goal == "Test goal"
+        assert job.task_list.target_platforms == [Platform.INSTAGRAM_FEED]
         assert job.captions == []
         assert job.images == []
         assert job.videos == []
@@ -363,6 +420,7 @@ class TestJob:
         """Test job with approval timestamp."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.TWITTER],
             captions=CaptionTaskConfig(n=1)
         )
         job = Job(
@@ -381,6 +439,7 @@ class TestJob:
         """Test job with generated assets."""
         task_list = TaskList(
             goal="Test",
+            target_platforms=[Platform.FACEBOOK, Platform.LINKEDIN],
             captions=CaptionTaskConfig(n=2)
         )
         job = Job(
@@ -402,6 +461,7 @@ class TestJob:
         """Test job can be serialized and deserialized."""
         task_list = TaskList(
             goal="Round trip test",
+            target_platforms=[Platform.YOUTUBE],
             captions=CaptionTaskConfig(n=3),
         )
         original_job = Job(
@@ -428,6 +488,7 @@ class TestJob:
         """Test valid status transitions."""
         task_list = TaskList(
             goal="Status test",
+            target_platforms=[Platform.INSTAGRAM_STORY],
             captions=CaptionTaskConfig(n=1)
         )
 
