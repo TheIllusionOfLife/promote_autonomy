@@ -1,6 +1,7 @@
 """Integration tests for ADK coordinator."""
 
 import pytest
+from app.core.config import get_settings
 from app.agents.coordinator import (
     create_copy_agent,
     create_image_agent,
@@ -9,13 +10,15 @@ from app.agents.coordinator import (
     get_creative_coordinator,
 )
 
+settings = get_settings()
+
 
 def test_create_copy_agent():
     """Test copy agent creation."""
     agent = create_copy_agent()
 
     assert agent.name == "copy_writer"
-    assert agent.model == "gemini-2.5-flash"
+    assert agent.model == settings.GEMINI_MODEL
     assert len(agent.tools) == 1
     # Verify tool name
     assert agent.tools[0].__name__ == "generate_captions_tool"
@@ -26,7 +29,7 @@ def test_create_image_agent():
     agent = create_image_agent()
 
     assert agent.name == "image_creator"
-    assert agent.model == "gemini-2.5-flash"
+    assert agent.model == settings.GEMINI_MODEL
     assert len(agent.tools) == 1
     assert agent.tools[0].__name__ == "generate_image_tool"
 
@@ -36,7 +39,7 @@ def test_create_video_agent():
     agent = create_video_agent()
 
     assert agent.name == "video_producer"
-    assert agent.model == "gemini-2.5-flash"
+    assert agent.model == settings.GEMINI_MODEL
     assert len(agent.tools) == 1
     assert agent.tools[0].__name__ == "generate_video_tool"
 
@@ -46,7 +49,7 @@ def test_create_creative_coordinator():
     coordinator = create_creative_coordinator()
 
     assert coordinator.name == "creative_director"
-    assert coordinator.model == "gemini-2.5-flash"
+    assert coordinator.model == settings.GEMINI_MODEL
     assert len(coordinator.sub_agents) == 3
 
     # Verify sub-agents
@@ -55,15 +58,11 @@ def test_create_creative_coordinator():
 
 
 def test_get_creative_coordinator_singleton():
-    """Test coordinator singleton pattern."""
-    # Clear singleton first (if any)
-    import app.agents.coordinator as coordinator_module
-    coordinator_module._creative_coordinator = None
-
+    """Test coordinator singleton pattern with lru_cache."""
     coordinator1 = get_creative_coordinator()
     coordinator2 = get_creative_coordinator()
 
-    # Should return same instance
+    # Should return same instance due to @lru_cache
     assert coordinator1 is coordinator2
     assert coordinator1.name == "creative_director"
 
