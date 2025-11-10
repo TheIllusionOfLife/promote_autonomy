@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # Pub/Sub Configuration (deprecated - now using OIDC)
     PUBSUB_SECRET_TOKEN: str = ""  # Optional, no longer used with OIDC auth
+    PUBSUB_SERVICE_ACCOUNT: str = "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com"  # Expected service account for OIDC verification
 
     # Mock Mode Flags
     USE_MOCK_GEMINI: bool = False  # For copy.py and video.py

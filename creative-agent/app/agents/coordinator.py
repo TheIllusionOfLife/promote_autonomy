@@ -131,11 +131,22 @@ Example output format:
 
 
 # Singleton instance management
+# NOTE: ADK agents are stateless - they don't store request-specific data.
+# The singleton pattern is safe because:
+# 1. LlmAgent instances only contain configuration (model, instructions, tools)
+# 2. Each run() call is independent with its own context
+# 3. No mutable state is shared between requests
+# 4. Thread-safety: ADK handles concurrent requests internally
 _creative_coordinator: LlmAgent | None = None
 
 
 def get_creative_coordinator() -> LlmAgent:
     """Get or create the creative coordinator agent (singleton).
+
+    The coordinator is safe to share across requests because:
+    - ADK agents are stateless (no request-specific data stored)
+    - Each run() invocation is independent
+    - Configuration (model, tools, instructions) is immutable
 
     Returns:
         LlmAgent coordinator instance
