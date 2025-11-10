@@ -16,6 +16,13 @@ steps:
       - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
   # Deploy container image to Cloud Run
+  # Environment variables:
+  #   PROJECT_ID: GCP project identifier (required by Pydantic Settings)
+  #   LOCATION: Vertex AI region (us-central1 required for VEO 3.0)
+  #   STORAGE_BUCKET: GCS bucket for generated assets (format: project-id-assets)
+  #   VIDEO_OUTPUT_GCS_BUCKET: VEO video output path (format: bucket-name/veo-output)
+  # Service account: creative-agent@PROJECT_ID.iam.gserviceaccount.com
+  #   Requires: Firestore write, Storage write, Vertex AI access, Pub/Sub subscribe
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -28,6 +35,8 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
+      - '--service-account'
+      - 'creative-agent@$PROJECT_ID.iam.gserviceaccount.com'
       - '--no-allow-unauthenticated'
       - '--set-env-vars'
       - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,STORAGE_BUCKET=$PROJECT_ID-assets,VIDEO_OUTPUT_GCS_BUCKET=$PROJECT_ID-assets/veo-output'
