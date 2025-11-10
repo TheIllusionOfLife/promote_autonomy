@@ -149,6 +149,10 @@ async def strategize(
             detail="UID mismatch between token and request",
         )
 
+    # Initialize variables before try block to avoid UnboundLocalError in except handler
+    reference_url = None
+    reference_analysis = None
+
     try:
         # Generate unique event ID
         event_id = str(ULID())
@@ -157,10 +161,6 @@ async def strategize(
         # Get service instances once at the start
         storage_service = get_storage_service()
         gemini_service = get_gemini_service()
-
-        # Handle reference image upload and analysis
-        reference_url = None
-        reference_analysis = None
 
         if reference_image:
             # Validate file type
