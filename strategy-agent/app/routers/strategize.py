@@ -12,7 +12,7 @@ from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
 from app.services.gemini import get_gemini_service
 from app.services.storage import get_storage_service
-from promote_autonomy_shared.schemas import JobStatus, Platform, PLATFORM_SPECS
+from promote_autonomy_shared.schemas import BrandStyle, JobStatus, Platform, PLATFORM_SPECS
 import json
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,6 @@ async def strategize(
     if brand_style:
         try:
             brand_style_dict = json.loads(brand_style)
-            from promote_autonomy_shared.schemas import BrandStyle
             brand_style_obj = BrandStyle(**brand_style_dict)
         except json.JSONDecodeError as e:
             raise HTTPException(

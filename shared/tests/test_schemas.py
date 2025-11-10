@@ -777,6 +777,26 @@ class TestBrandStyle:
                 tagline="x" * 101  # Exceeds 100 character limit
             )
 
+    def test_brand_style_rejects_multiple_primary_colors(self):
+        """Test validation rejects more than one primary color."""
+        with pytest.raises(ValidationError, match="Only one color can be marked as primary"):
+            BrandStyle(
+                colors=[
+                    BrandColor(hex_code="FF0000", name="Red 1", usage="primary"),
+                    BrandColor(hex_code="0000FF", name="Blue 1", usage="primary"),
+                ],
+                tone=BrandTone.CASUAL
+            )
+
+    def test_brand_style_rejects_tagline_with_html(self):
+        """Test validation rejects tagline with HTML tags to prevent XSS."""
+        with pytest.raises(ValidationError, match="Tagline cannot contain HTML tags"):
+            BrandStyle(
+                colors=[BrandColor(hex_code="000000", name="Black")],
+                tone=BrandTone.PROFESSIONAL,
+                tagline="<script>alert('xss')</script>"
+            )
+
     def test_brand_style_all_tones(self):
         """Test all brand tone values are valid."""
         tones = [
