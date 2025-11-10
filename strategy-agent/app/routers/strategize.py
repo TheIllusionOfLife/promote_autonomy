@@ -259,7 +259,6 @@ async def strategize(
         if reference_url:
             logger.warning(f"Strategize failed, cleaning up reference image: {e}")
             try:
-                storage_service = get_storage_service()
                 await storage_service.delete_reference_image(event_id)
                 logger.info(f"Cleaned up reference image for failed job {event_id}")
             except Exception as cleanup_error:
