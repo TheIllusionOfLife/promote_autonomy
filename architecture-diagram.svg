@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" style="background-color: #ffffff;">
+  <defs>
+    <style>
+      .cloud-run { fill: #4285f4; stroke: #1a73e8; stroke-width: 2; }
+      .vertex-ai { fill: #ea4335; stroke: #c5221f; stroke-width: 2; }
+      .data-layer { fill: #34a853; stroke: #188038; stroke-width: 2; }
+      .adk-agent { fill: #fbbc04; stroke: #f29900; stroke-width: 2; }
+      .user { fill: #9aa0a6; stroke: #5f6368; stroke-width: 2; }
+      .text { fill: #fff; font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .text-dark { fill: #000; font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .title { fill: #202124; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; }
+      .subtitle { fill: #5f6368; font-family: Arial, sans-serif; font-size: 11px; text-anchor: middle; }
+      .arrow { stroke: #5f6368; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-thick { stroke: #1a73e8; stroke-width: 3; fill: none; marker-end: url(#arrowhead-blue); }
+      .dashed { stroke-dasharray: 5,5; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#5f6368" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#1a73e8" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" class="title">Promote Autonomy - Multi-Agent Marketing Automation</text>
+  <text x="600" y="50" class="subtitle">Google ADK Multi-Agent System on Cloud Run</text>
+
+  <!-- User -->
+  <circle cx="100" cy="120" r="30" class="user"/>
+  <text x="100" y="125" class="text">User</text>
+
+  <!-- Frontend -->
+  <rect x="200" y="90" width="140" height="80" rx="5" class="cloud-run"/>
+  <text x="270" y="115" class="text">Frontend</text>
+  <text x="270" y="130" class="text">Next.js</text>
+  <text x="270" y="145" class="text">Cloud Run</text>
+  <text x="270" y="160" class="subtitle">Port 3000</text>
+
+  <!-- Strategy Agent -->
+  <rect x="400" y="90" width="160" height="80" rx="5" class="cloud-run"/>
+  <text x="480" y="115" class="text">Strategy Agent</text>
+  <text x="480" y="130" class="text">FastAPI + Gemini</text>
+  <text x="480" y="145" class="text">Cloud Run</text>
+  <text x="480" y="160" class="subtitle">Port 8000</text>
+
+  <!-- Firestore -->
+  <rect x="200" y="220" width="140" height="70" rx="5" class="data-layer"/>
+  <text x="270" y="245" class="text">Firestore</text>
+  <text x="270" y="260" class="text">State Management</text>
+  <text x="270" y="275" class="subtitle">Real-time Sync</text>
+
+  <!-- Pub/Sub -->
+  <rect x="400" y="220" width="160" height="70" rx="5" class="data-layer"/>
+  <text x="480" y="245" class="text">Pub/Sub</text>
+  <text x="480" y="260" class="text">creative-tasks</text>
+  <text x="480" y="275" class="subtitle">Agent Communication</text>
+
+  <!-- Creative Agent Container -->
+  <rect x="50" y="340" width="500" height="280" rx="5" fill="#f1f3f4" stroke="#5f6368" stroke-width="2"/>
+  <text x="300" y="365" class="title" style="font-size: 14px;">Creative Agent - ADK Multi-Agent System</text>
+
+  <!-- Creative Agent Main -->
+  <rect x="70" y="380" width="180" height="60" rx="5" class="cloud-run"/>
+  <text x="160" y="400" class="text">Creative Agent</text>
+  <text x="160" y="415" class="text">FastAPI + ADK</text>
+  <text x="160" y="430" class="text">Cloud Run (Port 8001)</text>
+
+  <!-- ADK Coordinator -->
+  <rect x="280" y="380" width="250" height="220" rx="5" fill="#fff8e1" stroke="#f29900" stroke-width="2"/>
+  <text x="405" y="400" class="text-dark" style="font-weight: bold;">ADK Coordinator</text>
+  <text x="405" y="415" class="text-dark">Creative Director</text>
+  <text x="405" y="430" class="text-dark" style="font-size: 10px;">LlmAgent (Gemini 2.5 Flash)</text>
+
+  <!-- Sub-Agents -->
+  <rect x="290" y="445" width="70" height="50" rx="3" class="adk-agent"/>
+  <text x="325" y="463" class="text-dark" style="font-size: 10px;">Copy Writer</text>
+  <text x="325" y="477" class="text-dark" style="font-size: 10px;">Agent</text>
+
+  <rect x="370" y="445" width="70" height="50" rx="3" class="adk-agent"/>
+  <text x="405" y="463" class="text-dark" style="font-size: 10px;">Image Creator</text>
+  <text x="405" y="477" class="text-dark" style="font-size: 10px;">Agent</text>
+
+  <rect x="450" y="445" width="70" height="50" rx="3" class="adk-agent"/>
+  <text x="485" y="463" class="text-dark" style="font-size: 10px;">Video Producer</text>
+  <text x="485" y="477" class="text-dark" style="font-size: 10px;">Agent</text>
+
+  <!-- Vertex AI Services -->
+  <rect x="290" y="510" width="70" height="60" rx="3" class="vertex-ai"/>
+  <text x="325" y="530" class="text" style="font-size: 10px;">Gemini</text>
+  <text x="325" y="545" class="text" style="font-size: 10px;">2.5 Flash</text>
+  <text x="325" y="560" class="text" style="font-size: 9px;">Captions</text>
+
+  <rect x="370" y="510" width="70" height="60" rx="3" class="vertex-ai"/>
+  <text x="405" y="530" class="text" style="font-size: 10px;">Imagen</text>
+  <text x="405" y="545" class="text" style="font-size: 10px;">4.0</text>
+  <text x="405" y="560" class="text" style="font-size: 9px;">Images</text>
+
+  <rect x="450" y="510" width="70" height="60" rx="3" class="vertex-ai"/>
+  <text x="485" y="530" class="text" style="font-size: 10px;">Veo</text>
+  <text x="485" y="545" class="text" style="font-size: 10px;">3.0</text>
+  <text x="485" y="560" class="text" style="font-size: 9px;">Videos</text>
+
+  <!-- Cloud Storage -->
+  <rect x="600" y="340" width="140" height="70" rx="5" class="data-layer"/>
+  <text x="670" y="365" class="text">Cloud Storage</text>
+  <text x="670" y="380" class="text">Generated Assets</text>
+  <text x="670" y="395" class="subtitle">(Public URLs)</text>
+
+  <!-- Firebase Auth -->
+  <rect x="600" y="90" width="140" height="60" rx="5" class="user"/>
+  <text x="670" y="115" class="text">Firebase Auth</text>
+  <text x="670" y="130" class="text">ID Token</text>
+  <text x="670" y="145" class="subtitle">Anonymous Users</text>
+
+  <!-- HITL Workflow Box -->
+  <rect x="800" y="90" width="350" height="150" rx="5" fill="#e8f5e9" stroke="#188038" stroke-width="2"/>
+  <text x="975" y="115" class="title" style="font-size: 14px;">Human-in-the-Loop Workflow</text>
+
+  <rect x="820" y="130" width="90" height="40" rx="3" fill="#fff" stroke="#5f6368" stroke-width="1"/>
+  <text x="865" y="145" class="text-dark" style="font-size: 10px;">Pending</text>
+  <text x="865" y="158" class="text-dark" style="font-size: 10px;">Approval</text>
+
+  <rect x="930" y="130" width="90" height="40" rx="3" fill="#fff" stroke="#5f6368" stroke-width="1"/>
+  <text x="975" y="145" class="text-dark" style="font-size: 10px;">Processing</text>
+  <text x="975" y="158" class="text-dark" style="font-size: 10px;">(Generating)</text>
+
+  <rect x="1040" y="130" width="90" height="40" rx="3" fill="#fff" stroke="#5f6368" stroke-width="1"/>
+  <text x="1085" y="145" class="text-dark" style="font-size: 10px;">Completed</text>
+  <text x="1085" y="158" class="text-dark" style="font-size: 10px;">(Assets)</text>
+
+  <!-- Workflow arrows -->
+  <path d="M 910 150 L 925 150" class="arrow"/>
+  <path d="M 1020 150 L 1035 150" class="arrow"/>
+
+  <text x="975" y="200" class="text-dark" style="font-size: 11px;">✓ Human approves before execution</text>
+  <text x="975" y="220" class="text-dark" style="font-size: 11px;">✓ Atomic Firestore transaction</text>
+
+  <!-- Key Features Box -->
+  <rect x="800" y="260" width="350" height="360" rx="5" fill="#f1f3f4" stroke="#5f6368" stroke-width="2"/>
+  <text x="975" y="285" class="title" style="font-size: 14px;">Key Features</text>
+
+  <text x="820" y="310" class="text-dark" style="font-size: 11px; text-anchor: start;">🎯 Multi-Agent System</text>
+  <text x="830" y="328" class="subtitle" style="text-anchor: start;">• 3 specialized ADK sub-agents</text>
+  <text x="830" y="343" class="subtitle" style="text-anchor: start;">• Parallel execution orchestration</text>
+
+  <text x="820" y="368" class="text-dark" style="font-size: 11px; text-anchor: start;">☁️ Cloud Run Services</text>
+  <text x="830" y="386" class="subtitle" style="text-anchor: start;">• Frontend: Next.js web interface</text>
+  <text x="830" y="401" class="subtitle" style="text-anchor: start;">• Strategy: Plan generation (Gemini)</text>
+  <text x="830" y="416" class="subtitle" style="text-anchor: start;">• Creative: Asset generation (ADK)</text>
+
+  <text x="820" y="441" class="text-dark" style="font-size: 11px; text-anchor: start;">🤖 Google AI Models</text>
+  <text x="830" y="459" class="subtitle" style="text-anchor: start;">• Gemini 2.5 Flash (strategy + copy)</text>
+  <text x="830" y="474" class="subtitle" style="text-anchor: start;">• Imagen 4.0 (image generation)</text>
+  <text x="830" y="489" class="subtitle" style="text-anchor: start;">• Veo 3.0 (video generation)</text>
+
+  <text x="820" y="514" class="text-dark" style="font-size: 11px; text-anchor: start;">🔒 Security</text>
+  <text x="830" y="532" class="subtitle" style="text-anchor: start;">• Firebase Auth with ID tokens</text>
+  <text x="830" y="547" class="subtitle" style="text-anchor: start;">• OIDC for Pub/Sub authentication</text>
+  <text x="830" y="562" class="subtitle" style="text-anchor: start;">• Firestore security rules</text>
+
+  <text x="820" y="587" class="text-dark" style="font-size: 11px; text-anchor: start;">⚡ Performance</text>
+  <text x="830" y="605" class="subtitle" style="text-anchor: start;">• Async agent communication</text>
+  <text x="830" y="620" class="subtitle" style="text-anchor: start;">• Serverless auto-scaling</text>
+
+  <!-- Main Flow Arrows -->
+  <!-- User to Frontend -->
+  <path d="M 130 120 L 195 130" class="arrow-thick"/>
+  <text x="155" y="115" class="subtitle">1. Submit Goal</text>
+
+  <!-- Frontend to Strategy -->
+  <path d="M 340 130 L 395 130" class="arrow-thick"/>
+  <text x="360" y="115" class="subtitle">2. Generate Plan</text>
+
+  <!-- Strategy to Firestore -->
+  <path d="M 480 170 L 340 220" class="arrow"/>
+  <text x="400" y="195" class="subtitle" style="font-size: 10px;">3. Save Job</text>
+
+  <!-- Firestore to Frontend -->
+  <path d="M 270 220 L 270 175" class="arrow"/>
+  <text x="245" y="205" class="subtitle" style="font-size: 10px;">4. Listen</text>
+
+  <!-- Strategy to Pub/Sub -->
+  <path d="M 480 170 L 480 215" class="arrow-thick"/>
+  <text x="500" y="195" class="subtitle" style="font-size: 10px;">5. Publish</text>
+
+  <!-- Pub/Sub to Creative -->
+  <path d="M 400 255 L 250 340" class="arrow-thick"/>
+  <text x="320" y="300" class="subtitle" style="font-size: 10px;">6. Push</text>
+
+  <!-- Sub-agent delegation arrows -->
+  <path d="M 325 495 L 325 505" class="arrow dashed"/>
+  <path d="M 405 495 L 405 505" class="arrow dashed"/>
+  <path d="M 485 495 L 485 505" class="arrow dashed"/>
+
+  <!-- Vertex AI to Storage -->
+  <path d="M 325 570 L 595 365" class="arrow"/>
+  <path d="M 405 570 L 595 370" class="arrow"/>
+  <path d="M 485 570 L 595 375" class="arrow"/>
+  <text x="500" y="480" class="subtitle" style="font-size: 10px;">7. Upload Assets</text>
+
+  <!-- Storage to Frontend -->
+  <path d="M 670 340 L 340 175" class="arrow"/>
+  <text x="480" y="250" class="subtitle" style="font-size: 10px;">8. Display Results</text>
+
+  <!-- Auth arrow -->
+  <path d="M 600 120 L 565 130" class="arrow dashed"/>
+  <text x="575" y="115" class="subtitle" style="font-size: 10px;">Verify</text>
+
+  <!-- Legend -->
+  <rect x="50" y="650" width="690" height="80" rx="5" fill="#f8f9fa" stroke="#5f6368" stroke-width="1"/>
+  <text x="60" y="670" class="text-dark" style="text-anchor: start; font-weight: bold;">Legend:</text>
+
+  <rect x="70" y="680" width="40" height="20" class="cloud-run"/>
+  <text x="120" y="695" class="subtitle" style="text-anchor: start;">Cloud Run Service</text>
+
+  <rect x="230" y="680" width="40" height="20" class="vertex-ai"/>
+  <text x="280" y="695" class="subtitle" style="text-anchor: start;">Vertex AI Model</text>
+
+  <rect x="390" y="680" width="40" height="20" class="data-layer"/>
+  <text x="440" y="695" class="subtitle" style="text-anchor: start;">Data Storage</text>
+
+  <rect x="550" y="680" width="40" height="20" class="adk-agent"/>
+  <text x="600" y="695" class="subtitle" style="text-anchor: start;">ADK Agent</text>
+
+  <!-- Footer -->
+  <text x="600" y="870" class="subtitle" style="font-size: 10px;">Built for Cloud Run Hackathon - AI Agents Category | Technology: Google ADK, Cloud Run, Gemini, Imagen, Veo</text>
+</svg>
