@@ -46,9 +46,13 @@ class MockImageService:
                 (c for c in brand_style.colors if c.usage == "primary"),
                 brand_style.colors[0]
             )
-            # Convert hex to RGB
+            # Convert hex to RGB tuple with explicit unpacking for type safety
             hex_code = primary_color.hex_code
-            bg_color = tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
+            bg_color = (
+                int(hex_code[0:2], 16),
+                int(hex_code[2:4], 16),
+                int(hex_code[4:6], 16)
+            )
 
         # Create image with solid color background
         img = Image.new("RGB", (width, height), color=bg_color)
