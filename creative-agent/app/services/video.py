@@ -31,6 +31,9 @@ class VideoService(Protocol):
 class MockVideoService:
     """Mock video generation for testing."""
 
+    # Mock MP4 structure constants
+    MOCK_MVHD_HEADER_SIZE = 100  # Minimal header size sufficient for MP4 parsers
+
     async def generate_video(self, config: VideoTaskConfig) -> bytes:
         """Generate minimal valid MP4 file with placeholder content.
 
@@ -47,8 +50,7 @@ class MockVideoService:
 
         # moov box (movie metadata) - container for track info
         # For mock, we'll create a minimal moov box structure
-        # Minimal 100-byte movie header (sufficient for MP4 parsers to recognize structure)
-        mvhd_data = b"\x00" * 100
+        mvhd_data = b"\x00" * self.MOCK_MVHD_HEADER_SIZE
         mvhd_size = len(mvhd_data) + 8
         mvhd_box = struct.pack(">I", mvhd_size) + b"mvhd" + mvhd_data
 
@@ -76,6 +78,13 @@ class RealVeoVideoService:
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
         settings = get_settings()
+
+        # Validate required configuration
+        if not settings.VIDEO_OUTPUT_GCS_BUCKET:
+            raise ValueError(
+                "VIDEO_OUTPUT_GCS_BUCKET is required for real VEO video generation. "
+                "Example: gs://your-bucket/veo-output"
+            )
 
         try:
             from google import genai
@@ -107,10 +116,19 @@ class RealVeoVideoService:
             Video bytes (MP4 format) downloaded from GCS
 
         Raises:
+            ValueError: If prompt is too long or invalid
             TimeoutError: If video generation exceeds configured timeout
             RuntimeError: If video generation fails
         """
         from google.genai.types import GenerateVideosConfig
+
+        # Validate prompt length to prevent abuse and API errors
+        MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts
+        if len(config.prompt) > MAX_PROMPT_LENGTH:
+            raise ValueError(
+                f"Prompt exceeds maximum length of {MAX_PROMPT_LENGTH} characters "
+                f"(got {len(config.prompt)})"
+            )
 
         # Get current settings (allows for testing with mocked settings)
         settings = get_settings()
@@ -211,8 +229,11 @@ class RealVeoVideoService:
 
         # Split into bucket and object path
         parts = path.split("/", 1)
-        if len(parts) != 2:
-            raise ValueError(f"Invalid GCS URI format: {gcs_uri}. Must be gs://bucket/path")
+        if len(parts) != 2 or not parts[1]:
+            raise ValueError(
+                f"Invalid GCS URI format: {gcs_uri}. "
+                f"Must be gs://bucket/object-path (bucket-only URIs not supported)"
+            )
 
         bucket_name = parts[0]
         object_path = parts[1]
