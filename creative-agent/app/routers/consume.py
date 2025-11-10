@@ -6,7 +6,7 @@ import hashlib
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Header, Request
 from google.auth.transport import requests as google_requests
@@ -21,6 +21,14 @@ from app.services.image import get_image_service
 from app.services.video import get_video_service
 from app.services.firestore import get_firestore_service
 from app.services.storage import get_storage_service
+
+# Import types only during type checking to avoid circular imports
+if TYPE_CHECKING:
+    from app.services.firestore import FirestoreService
+    from app.services.storage import StorageService
+    from app.services.copy import CopyService
+    from app.services.image import ImageService
+    from app.services.video import VideoService
 
 # ADK imports
 from app.agents.coordinator import get_creative_coordinator
@@ -90,7 +98,7 @@ def _extract_url_from_text(text: str, asset_type: str) -> str | None:
 async def _generate_assets_with_adk(
     event_id: str,
     task_list: TaskList,
-    firestore_service: Any,
+    firestore_service: "FirestoreService",
 ) -> dict[str, str]:
     """Generate assets using ADK multi-agent orchestration.
 
@@ -164,20 +172,54 @@ Return results in JSON format with URLs for all generated assets:
         # Parse result - try to extract URLs from text response
         outputs = {}
 
-        # Try to parse as JSON first
+        # Try multiple JSON extraction strategies
+        json_parsed = False
+
+        # Strategy 1: Look for complete JSON object with balanced braces
         try:
-            # Look for JSON in the response
-            json_match = re.search(r'\{[^}]*"captions_url"[^}]*\}', result, re.DOTALL)
-            if json_match:
-                parsed = json.loads(json_match.group(0))
-                if "captions_url" in parsed:
-                    outputs["captions_url"] = parsed["captions_url"]
-                if "image_url" in parsed:
-                    outputs["image_url"] = parsed["image_url"]
-                if "video_url" in parsed:
-                    outputs["video_url"] = parsed["video_url"]
-        except (json.JSONDecodeError, AttributeError):
-            # Fall back to regex extraction
+            # Find JSON with proper nesting (handles multi-line)
+            brace_count = 0
+            start_idx = result.find('{')
+            if start_idx != -1:
+                for i, char in enumerate(result[start_idx:], start=start_idx):
+                    if char == '{':
+                        brace_count += 1
+                    elif char == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_str = result[start_idx:i+1]
+                            parsed = json.loads(json_str)
+
+                            # Validate and extract URLs
+                            for key in ["captions_url", "image_url", "video_url"]:
+                                if key in parsed and isinstance(parsed[key], str):
+                                    url = parsed[key].strip()
+                                    if url.startswith("https://storage.googleapis.com/"):
+                                        outputs[key] = url
+
+                            json_parsed = True
+                            break
+        except (json.JSONDecodeError, ValueError, AttributeError) as e:
+            logger.debug(f"[ADK] JSON extraction strategy 1 failed: {e}")
+
+        # Strategy 2: Try markdown code block extraction
+        if not json_parsed:
+            try:
+                code_block_match = re.search(r'```(?:json)?\s*\n?(\{.*?\})\s*\n?```', result, re.DOTALL)
+                if code_block_match:
+                    parsed = json.loads(code_block_match.group(1))
+                    for key in ["captions_url", "image_url", "video_url"]:
+                        if key in parsed and isinstance(parsed[key], str):
+                            url = parsed[key].strip()
+                            if url.startswith("https://storage.googleapis.com/"):
+                                outputs[key] = url
+                    json_parsed = True
+            except (json.JSONDecodeError, AttributeError) as e:
+                logger.debug(f"[ADK] JSON extraction strategy 2 failed: {e}")
+
+        # Fallback: Regex extraction if JSON parsing failed
+        if not json_parsed:
+            logger.warning(f"[ADK] Failed to parse JSON from ADK response for job {event_id}, falling back to regex")
             if task_list.captions:
                 url = _extract_url_from_text(result, "captions")
                 if url:
@@ -215,11 +257,11 @@ Return results in JSON format with URLs for all generated assets:
 async def _generate_assets_legacy(
     event_id: str,
     task_list: TaskList,
-    firestore_service: Any,
-    storage_service: Any,
-    copy_service: Any,
-    image_service: Any,
-    video_service: Any,
+    firestore_service: "FirestoreService",
+    storage_service: "StorageService",
+    copy_service: "CopyService",
+    image_service: "ImageService",
+    video_service: "VideoService",
 ) -> dict[str, str]:
     """Generate assets using legacy asyncio.gather() orchestration.
 
@@ -372,8 +414,7 @@ async def consume_task(
             raise ValueError(f"Token has wrong audience, expected {audience_https}")
 
         # Verify the token is from the expected service account
-        # TODO: Move this to configuration for multi-environment support
-        expected_sa = "pubsub-invoker@promote-autonomy.iam.gserviceaccount.com"
+        expected_sa = settings.PUBSUB_SERVICE_ACCOUNT
         if claim.get("email") != expected_sa:
             logger.warning(f"Unexpected service account: {claim.get('email')}, expected: {expected_sa}")
             raise HTTPException(status_code=403, detail="Invalid service account")
