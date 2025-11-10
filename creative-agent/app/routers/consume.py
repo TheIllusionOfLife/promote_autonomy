@@ -225,8 +225,6 @@ async def consume_task(
 
         # Delete reference image after successful completion
         try:
-            from app.services.storage import get_storage_service
-            storage_service = get_storage_service()
             await storage_service.delete_reference_image(event_id)
             logger.info(f"Deleted reference image for job {event_id}")
         except Exception as e:
