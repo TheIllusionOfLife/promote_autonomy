@@ -5,8 +5,8 @@
 The easiest option is to use the provided SVG file directly:
 
 ```bash
-# The SVG file is ready to use
-/home/user/promote_autonomy/architecture-diagram.svg
+# The SVG file is ready to use (in repository root)
+./architecture-diagram.svg
 ```
 
 **To convert SVG to PNG for submission:**
@@ -21,7 +21,7 @@ inkscape architecture-diagram.svg --export-filename=architecture-diagram.png --e
 ```
 
 ### Option 2: Using Online Converter
-1. Go to https://cloudconvert.com/svg-to-png
+1. Go to [CloudConvert SVG to PNG](https://cloudconvert.com/svg-to-png)
 2. Upload `architecture-diagram.svg`
 3. Set width to 2400px
 4. Download the PNG
@@ -38,8 +38,8 @@ inkscape architecture-diagram.svg --export-filename=architecture-diagram.png --e
 If you want to customize the diagram, use draw.io:
 
 ### Step 1: Open draw.io
-- Go to https://app.diagrams.net/
-- Or use desktop app: https://www.diagrams.net/
+- Go to [draw.io web app](https://app.diagrams.net/)
+- Or use [draw.io desktop app](https://www.diagrams.net/)
 
 ### Step 2: Create New Diagram
 - Choose "Blank Diagram"

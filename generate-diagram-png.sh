@@ -2,11 +2,18 @@
 # Generate PNG from SVG architecture diagram
 # This script tries multiple methods to convert the SVG to high-resolution PNG
 
-set -e
+set -euo pipefail
 
 SVG_FILE="architecture-diagram.svg"
 PNG_FILE="architecture-diagram.png"
 WIDTH=2400  # High resolution for crisp text
+
+# Validate input file exists
+if [[ ! -f "$SVG_FILE" ]]; then
+    echo "❌ Error: SVG file not found at '$SVG_FILE'" >&2
+    echo "Please run this script from the repository root directory." >&2
+    exit 1
+fi
 
 echo "🎨 Converting architecture diagram to PNG..."
 
