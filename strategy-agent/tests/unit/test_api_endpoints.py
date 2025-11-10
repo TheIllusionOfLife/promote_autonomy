@@ -109,12 +109,39 @@ class TestStrategizeEndpoint:
             # Most restrictive file size (Instagram Story: 4MB)
             assert task_list["video"]["max_file_size_mb"] == 4.0
 
-    def test_strategize_validates_goal_length(self, test_client, mock_user_id):
-        """Test goal validation rejects too short goals."""
+    def test_strategize_rejects_missing_required_fields(self, test_client, mock_user_id):
+        """Test that missing required fields are rejected."""
         response = test_client.post(
             "/api/strategize",
             data={
             },
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_strategize_rejects_goal_too_short(self, test_client, mock_user_id, auth_headers):
+        """Test that goal below min_length (10 chars) is rejected."""
+        response = test_client.post(
+            "/api/strategize",
+            data={
+                "goal": "short",  # Only 5 characters (min is 10)
+                "target_platforms": json.dumps(["twitter"]),
+                "uid": mock_user_id,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_strategize_rejects_goal_too_long(self, test_client, mock_user_id, auth_headers):
+        """Test that goal above max_length (500 chars) is rejected."""
+        long_goal = "x" * 501  # 501 characters (max is 500)
+        response = test_client.post(
+            "/api/strategize",
+            data={
+                "goal": long_goal,
+                "target_platforms": json.dumps(["twitter"]),
+                "uid": mock_user_id,
+            },
+            headers=auth_headers,
         )
         assert response.status_code == 422  # Validation error
 

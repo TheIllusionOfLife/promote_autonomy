@@ -115,7 +115,7 @@ PLATFORM_SPECS = {
 
 **Storage**: Reference images stored in Cloud Storage (`{event_id}/reference_image.{ext}`)
 
-**Cleanup**: Deleted automatically by Creative Agent after job completion (strategy-agent/app/routers/consume.py:226-234)
+**Cleanup**: Deleted automatically by Creative Agent after job completion (creative-agent/app/routers/consume.py:226-234)
 
 ## Project Structure
 

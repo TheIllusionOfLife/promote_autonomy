@@ -119,9 +119,9 @@ class RealStorageService:
         # List all blobs with reference_image prefix
         blobs = list(self.bucket.list_blobs(prefix=f"{event_id}/reference_image"))
 
-        # Delete each matching blob
-        for blob in blobs:
-            blob.delete()
+        # Batch delete all matching blobs (more efficient than individual deletes)
+        if blobs:
+            self.bucket.delete_blobs(blobs)
 
 
 # Service instance management

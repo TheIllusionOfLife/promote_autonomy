@@ -148,8 +148,8 @@ class TestRealStorageService:
             # Verify list_blobs called with prefix
             mock_bucket.list_blobs.assert_called_once_with(prefix="event123/reference_image")
 
-            # Verify delete called on the blob
-            mock_blob_jpg.delete.assert_called_once()
+            # Verify batch delete called with the blob list
+            mock_bucket.delete_blobs.assert_called_once_with([mock_blob_jpg])
 
     @pytest.mark.asyncio
     async def test_delete_reference_image_not_found(self):

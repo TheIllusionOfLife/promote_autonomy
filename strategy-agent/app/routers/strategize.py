@@ -154,6 +154,10 @@ async def strategize(
         event_id = str(ULID())
         logger.info(f"Processing strategize request for user {uid}")
 
+        # Get service instances once at the start
+        storage_service = get_storage_service()
+        gemini_service = get_gemini_service()
+
         # Handle reference image upload and analysis
         reference_url = None
         reference_analysis = None
@@ -177,7 +181,6 @@ async def strategize(
                 )
 
             # Upload using already-read content (avoid double-read)
-            storage_service = get_storage_service()
             reference_url = await storage_service.upload_reference_image(
                 event_id=event_id,
                 content=content,
@@ -188,7 +191,6 @@ async def strategize(
 
             try:
                 # Analyze image with Gemini vision (pass actual MIME type)
-                gemini_service = get_gemini_service()
                 reference_analysis = await gemini_service.analyze_reference_image(
                     reference_url, goal, reference_image.content_type
                 )
@@ -205,7 +207,6 @@ async def strategize(
                 raise
 
         # Generate task list via Gemini (with optional reference analysis)
-        gemini_service = get_gemini_service()
         try:
             task_list = await gemini_service.generate_task_list(
                 goal,
