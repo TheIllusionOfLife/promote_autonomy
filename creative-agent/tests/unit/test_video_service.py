@@ -1,5 +1,6 @@
 """Unit tests for video generation services (VEO integration)."""
 
+import os
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from promote_autonomy_shared.schemas import VideoTaskConfig
@@ -70,6 +71,10 @@ class TestMockVideoService:
             assert len(video_bytes) > 0
 
 
+@pytest.mark.skipif(
+    os.getenv("USE_MOCK_VEO", "false").lower() == "true",
+    reason="Skipping RealVeoVideoService tests when USE_MOCK_VEO=true (CI environment)"
+)
 class TestRealVeoVideoService:
     """Tests for RealVeoVideoService using google.genai SDK."""
 
@@ -246,6 +251,10 @@ class TestRealVeoVideoService:
                 assert call_kwargs["config"].aspect_ratio == "16:9"
 
 
+@pytest.mark.skipif(
+    os.getenv("USE_MOCK_VEO", "false").lower() == "true",
+    reason="Skipping GCS download tests when USE_MOCK_VEO=true (CI environment)"
+)
 class TestGCSDownload:
     """Tests for GCS download functionality."""
 
@@ -408,6 +417,10 @@ class TestVideoServiceFactory:
             # Should be MockVideoService
             assert service.__class__.__name__ == "MockVideoService"
 
+    @pytest.mark.skipif(
+        os.getenv("USE_MOCK_VEO", "false").lower() == "true",
+        reason="Skipping test that instantiates RealVeoVideoService when USE_MOCK_VEO=true (CI environment)"
+    )
     def test_get_video_service_returns_real_when_flag_false(self):
         """Test factory returns RealVeoVideoService when USE_MOCK_VEO is False."""
         from app.services.video import get_video_service
