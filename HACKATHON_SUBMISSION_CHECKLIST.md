@@ -20,16 +20,16 @@
 
 - [x] **Cloud Run Deployment**
   - 3 independent services fully deployed and operational
-  - Frontend: https://frontend-909635873035.asia-northeast1.run.app
-  - Strategy Agent: https://strategy-agent-909635873035.asia-northeast1.run.app
-  - Creative Agent: https://creative-agent-909635873035.asia-northeast1.run.app
+  - Frontend: https://frontend-luwcxjaugq-an.a.run.app
+  - Strategy Agent: https://strategy-agent-luwcxjaugq-an.a.run.app
+  - Creative Agent: https://creative-agent-luwcxjaugq-an.a.run.app
 
 - [x] **Public Code Repository**
   - GitHub: https://github.com/TheIllusionOfLife/promote_autonomy
   - All code is public and well-documented
 
 - [x] **Try It Out Link**
-  - Live demo: https://frontend-909635873035.asia-northeast1.run.app
+  - Live demo: https://frontend-luwcxjaugq-an.a.run.app
   - Fully functional end-to-end workflow
 
 - [x] **Text Description**
@@ -210,7 +210,7 @@ Key innovation: Human-in-the-Loop approval workflow ensures AI suggestions are r
 
 Tech stack: Google ADK, Cloud Run, Gemini 2.5 Flash, Imagen 4.0, Veo 3.0
 
-🔗 Try the live demo: https://frontend-909635873035.asia-northeast1.run.app
+🔗 Try the live demo: https://frontend-luwcxjaugq-an.a.run.app
 📊 Architecture: [link to architecture diagram]
 💻 Code: https://github.com/TheIllusionOfLife/promote_autonomy
 
@@ -278,7 +278,7 @@ Promote Autonomy is a multi-agent AI system that generates marketing strategies 
 ### Links for Devpost
 
 **Submission Fields**:
-- **Try it Out**: https://frontend-909635873035.asia-northeast1.run.app
+- **Try it Out**: https://frontend-luwcxjaugq-an.a.run.app
 - **Code Repository**: https://github.com/TheIllusionOfLife/promote_autonomy
 - **Demo Video**: [YouTube URL] ← TO BE ADDED
 - **Architecture Diagram**: [Upload PNG] ← TO BE UPLOADED
@@ -364,6 +364,6 @@ Promote Autonomy is a multi-agent AI system that generates marketing strategies 
 ## 📧 Contact for Questions
 
 **Project GitHub**: https://github.com/TheIllusionOfLife/promote_autonomy
-**Live Demo**: https://frontend-909635873035.asia-northeast1.run.app
+**Live Demo**: https://frontend-luwcxjaugq-an.a.run.app
 
 Good luck with your submission! 🚀

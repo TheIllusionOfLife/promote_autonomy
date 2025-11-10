@@ -35,8 +35,7 @@ class BrandColor(BaseModel):
         pattern=r"^[0-9A-Fa-f]{6}$",
     )
     name: str = Field(
-        description="Human-readable color name (e.g., 'Primary Red')",
-        min_length=1,
+        description="Human-readable color name (e.g., 'Primary Red'). Empty string is allowed; creative agent will use fallback.",
         max_length=30,
     )
     usage: str = Field(

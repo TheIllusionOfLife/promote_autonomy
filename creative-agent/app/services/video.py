@@ -163,7 +163,9 @@ class RealVeoVideoService:
                     (c for c in brand_style.colors if c.usage == "primary"),
                     brand_style.colors[0]
                 )
-                enhanced_prompt += f" Use {primary_color.name} (#{primary_color.hex_code}) as primary color accent."
+                # Natural color description without hex codes (VEO interprets literally)
+                color_name = primary_color.name if primary_color.name else "the brand color"
+                enhanced_prompt += f" Incorporate {color_name} as a prominent visual accent throughout."
 
         # Validate prompt length to prevent abuse and API errors
         MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts

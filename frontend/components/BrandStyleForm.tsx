@@ -10,7 +10,7 @@ interface BrandStyleFormProps {
 
 export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps) {
   const [colors, setColors] = useState<BrandColor[]>(
-    value?.colors || [{ hex_code: '000000', name: 'Primary', usage: 'primary' }]
+    value?.colors || [{ hex_code: '4D18C9', name: '', usage: 'primary' }]
   );
   const [tone, setTone] = useState<BrandTone>(value?.tone || 'professional');
   const [tagline, setTagline] = useState(value?.tagline || '');
@@ -23,7 +23,7 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
       setTagline(value.tagline || '');
     } else {
       // Reset to defaults when value is null
-      setColors([{ hex_code: '000000', name: 'Primary', usage: 'primary' }]);
+      setColors([{ hex_code: '4D18C9', name: '', usage: 'primary' }]);
       setTone('professional');
       setTagline('');
     }
@@ -131,9 +131,12 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
 
       {/* Brand Colors */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Brand Colors (1-5 colors)
         </label>
+        <p className="text-xs text-gray-500 mb-3">
+          Pick color → Give it a name → Select usage type (Primary/Accent/etc.)
+        </p>
         <div className="space-y-2">
           {colors.map((color, index) => (
             <div key={index} className="flex items-center gap-2">
@@ -148,11 +151,12 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
               />
               <input
                 type="text"
-                placeholder="Color name (e.g., Primary Red)"
+                placeholder="Name this color (e.g., Brand Blue)"
                 value={color.name}
                 onChange={(e) => updateColor(index, 'name', e.target.value)}
                 maxLength={30}
                 className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Give this color a descriptive name"
               />
               <select
                 value={color.usage}

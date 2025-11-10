@@ -4,7 +4,7 @@
 >
 > Multi-agent marketing automation system built with **Google Agent Development Kit (ADK)** and deployed on **Cloud Run**.
 >
-> **[🚀 Try Live Demo](https://frontend-909635873035.asia-northeast1.run.app)** | **[📊 Architecture Diagram](./architecture-diagram.svg)** | **[📖 Full Documentation](./ARCHITECTURE.md)**
+> **[🚀 Try Live Demo](https://frontend-luwcxjaugq-an.a.run.app)** | **[📊 Architecture Diagram](./architecture-diagram.svg)** | **[📖 Full Documentation](./ARCHITECTURE.md)**
 
 ## Overview
 
@@ -382,7 +382,7 @@ firebase deploy --only firestore:rules
 
 ## Project Status
 
-**Live Demo**: https://frontend-909635873035.asia-northeast1.run.app
+**Live Demo**: https://frontend-luwcxjaugq-an.a.run.app
 
 **Current Status**:
 - ✅ **Code**: 100% complete (83/83 tests passing)
