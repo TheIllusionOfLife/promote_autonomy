@@ -1,13 +1,10 @@
 # Promote Autonomy
-
 Multi-agent marketing automation system built with **Google Agent Development Kit (ADK)** and deployed on **Cloud Run**.  
-**[🚀 Try Live Demo](https://frontend-luwcxjaugq-an.a.run.app)** | **[📊 Architecture Diagram](./architecture-diagram.svg)** | **[📖 Full Documentation](./ARCHITECTURE.md)**
 
 ## Overview
-
 Promote Autonomy is a **multi-agent AI system** that generates marketing strategies and assets using Google's Agent Development Kit (ADK), requiring explicit human approval before execution.
 
-**Key Innovation**: Combines ADK's multi-agent orchestration with Human-in-the-Loop (HITL) approval workflow, deployed as three independent Cloud Run services communicating via Pub/Sub.
+**Key Innovation**: Combines ADK's multi-agent orchestration with Human-in-the-Loop (HITL) approval workflow to create multi-modal assets for platforms with multi-modal user input and direction.
 
 ### AI Agents Category Requirements
 - ✅ **Google ADK Integration**: Creative Agent uses ADK coordinator with 3 specialized sub-agents
@@ -18,29 +15,8 @@ Promote Autonomy is a **multi-agent AI system** that generates marketing strateg
 
 ## Architecture
 
-### Three-Service Design
-
-```
-┌─────────────┐       ┌──────────────────┐       ┌────────────────┐
-│   Frontend  │──────▶│ Strategy Agent   │──────▶│ Creative Agent │
-│  (Next.js)  │       │   (FastAPI)      │       │   (FastAPI)    │
-└─────────────┘       └──────────────────┘       └────────────────┘
-      │                       │                          │
-      │                       │                          │
-      └───────────────────────┴──────────────────────────┘
-                              │
-                        ┌─────▼─────┐
-                        │ Firestore │
-                        └───────────┘
-```
-
-**Frontend**: Client-side Firebase app with read-only Firestore access
-**Strategy Agent**: Generates task lists via Gemini, handles approval workflow
-**Creative Agent**: Pub/Sub consumer generating assets (copy, images, videos) with **Google ADK multi-agent orchestration**
-
-> 📊 **[View Full Architecture Diagram](./architecture-diagram.svg)** | **[Detailed Documentation](./ARCHITECTURE.md)**
->
-> The architecture diagram shows the complete multi-agent system including ADK coordinator with 3 specialized sub-agents, data flow, and HITL workflow.
+📊 **[View Full Architecture Diagram](./architecture-diagram.svg)** | **[Detailed Documentation](./ARCHITECTURE.md)**
+The architecture diagram shows the complete multi-agent system including ADK coordinator with 3 specialized sub-agents, data flow, and HITL workflow.
 
 ### HITL Workflow
 
@@ -366,14 +342,12 @@ firebase deploy --only firestore:rules
 
 **Track**: AI Agents Track
 **Requirements Met**:
-- ✅ Two communicating agents (Strategy → Creative via Pub/Sub)
+- ✅ Multiple agents communication with ADK
 - ✅ Cloud Run deployment
-- ✅ Human-in-the-Loop approval workflow
-- ✅ Vertex AI integration (Gemini, Imagen, Veo)
 
 **MVP Features**:
 - Marketing strategy generation
-- Asset creation (copy, images, video briefs)
+- Asset creation (copy, images, video briefs) with multi-modal input
 - Real-time status updates
 - Approval workflow with Firestore transactions
 
