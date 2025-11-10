@@ -293,7 +293,8 @@ These were reviewed and accepted as future enhancements:
 1. Complete this documentation PR
 2. Begin ADK Integration Test Refactoring (Priority 1)
 3. Then Multi-Modal Input implementation (Priority 2)
-4. Then Platform-Specific Configuration (Priority 4)
+4. Then Video Service Refactoring for Testability (Priority 3)
+5. Then Platform-Specific Asset Configuration (Priority 4)
 
 ---
 
