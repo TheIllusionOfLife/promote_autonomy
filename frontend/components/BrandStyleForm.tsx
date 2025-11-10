@@ -76,11 +76,11 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
       );
       if (existingPrimaryIndex !== -1) {
         // If another color is already primary, make it general
-        const newColors = colors.map((color, i) => {
+        const newColors: BrandColor[] = colors.map((color, i) => {
           if (i === existingPrimaryIndex) {
-            return { ...color, usage: 'general' as const };
+            return { ...color, usage: 'general' };
           } else if (i === index) {
-            return { ...color, [field]: value };
+            return { ...color, usage: value as BrandColor['usage'] };
           }
           return color;
         });
