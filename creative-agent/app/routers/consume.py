@@ -92,8 +92,8 @@ def _validate_gcs_url(url: str) -> bool:
             logger.warning(f"URL is not HTTPS: {url}")
             return False
 
-        # Verify it's from storage.googleapis.com
-        if not parsed.netloc.endswith('storage.googleapis.com'):
+        # Verify it's from storage.googleapis.com (exact match for security)
+        if parsed.netloc != 'storage.googleapis.com':
             logger.warning(f"URL is not from storage.googleapis.com: {url}")
             return False
 
@@ -125,7 +125,7 @@ def _extract_url_from_text(text: str, asset_type: str) -> str | None:
     # Look for patterns like "captions_url: https://..." or "captions_url": "https://..."
     patterns = [
         rf'{asset_type}_url["\']?:\s*["\']?(https://storage\.googleapis\.com[^\s"\']+)',
-        rf'{asset_type}_url["\']?\\s*=\s*["\']?(https://storage\.googleapis\.com[^\s"\']+)',
+        rf'{asset_type}_url["\']?\s*=\s*["\']?(https://storage\.googleapis\.com[^\s"\']+)',
     ]
 
     for pattern in patterns:

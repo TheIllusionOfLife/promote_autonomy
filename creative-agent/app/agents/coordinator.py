@@ -12,6 +12,11 @@ from app.agents.tools import (
 )
 from app.core.config import get_settings
 
+try:
+    from google.adk.agents import LlmAgent
+except ImportError:
+    LlmAgent = None  # Will fail gracefully if ADK not installed
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
@@ -22,8 +27,6 @@ def create_copy_agent():
     Returns:
         LlmAgent configured for copy writing with Gemini
     """
-    from google.adk.agents import LlmAgent
-
     return LlmAgent(
         name="copy_writer",
         model=settings.GEMINI_MODEL,
@@ -48,8 +51,6 @@ def create_image_agent():
     Returns:
         LlmAgent configured for image creation with Imagen
     """
-    from google.adk.agents import LlmAgent
-
     return LlmAgent(
         name="image_creator",
         model=settings.GEMINI_MODEL,
@@ -74,8 +75,6 @@ def create_video_agent():
     Returns:
         LlmAgent configured for video production with Veo
     """
-    from google.adk.agents import LlmAgent
-
     return LlmAgent(
         name="video_producer",
         model=settings.GEMINI_MODEL,
@@ -105,8 +104,6 @@ def create_creative_coordinator():
     Returns:
         LlmAgent configured to coordinate creative asset generation
     """
-    from google.adk.agents import LlmAgent
-
     copy_agent = create_copy_agent()
     image_agent = create_image_agent()
     video_agent = create_video_agent()
