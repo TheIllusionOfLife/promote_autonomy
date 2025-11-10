@@ -28,8 +28,17 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
+      - '--service-account'
+      - 'strategy-agent@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--allow-unauthenticated'
       - '--set-env-vars'
       - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=job-approvals,FRONTEND_URL=https://frontend-$PROJECT_ID.$_DEPLOY_REGION.run.app'
+      - '--memory'
+      - '1Gi'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
 
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
