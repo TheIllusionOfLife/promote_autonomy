@@ -154,11 +154,22 @@ async def consume_task(
             image_bytes = await image_service.generate_image(
                 task_list.image, task_list.brand_style
             )
+
+            # Determine format based on compression
+            # When max_file_size_mb is set, images are JPEG (compressed)
+            # Otherwise, images are PNG (lossless)
+            if task_list.image.max_file_size_mb:
+                filename = "image.jpg"
+                content_type = "image/jpeg"
+            else:
+                filename = "image.png"
+                content_type = "image/png"
+
             url = await storage_service.upload_file(
                 event_id=event_id,
-                filename="image.png",
+                filename=filename,
                 content=image_bytes,
-                content_type="image/png",
+                content_type=content_type,
             )
             logger.info(f"Image generated for job {event_id}")
             return url
@@ -172,6 +183,24 @@ async def consume_task(
             video_bytes = await video_service.generate_video(
                 task_list.video, task_list.brand_style
             )
+
+            # Check if video exceeds size limit and store warning
+            # Warning storage is non-critical - if it fails, we still return the video
+            if task_list.video.max_file_size_mb:
+                size_mb = len(video_bytes) / (1024 * 1024)
+                if size_mb > task_list.video.max_file_size_mb:
+                    warning_msg = (
+                        f"Generated video size ({size_mb:.2f} MB) exceeds "
+                        f"platform limit ({task_list.video.max_file_size_mb} MB). "
+                        f"This video may not upload successfully to the target platform."
+                    )
+                    try:
+                        await firestore_service.add_job_warning(event_id, warning_msg)
+                        logger.warning(f"Stored warning for job {event_id}: {warning_msg}")
+                    except Exception as e:
+                        # Log but don't fail job if warning storage fails
+                        logger.error(f"Failed to store warning for job {event_id}: {e}")
+
             url = await storage_service.upload_file(
                 event_id=event_id,
                 filename="video.mp4",

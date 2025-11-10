@@ -446,3 +446,7 @@ class TestVideoServiceFactory:
             service2 = get_video_service()
 
             assert service1 is service2
+
+
+# Note: TestVideoFileSizeWarning class removed as file size validation
+# is now handled in consume.py router to store warnings in Firestore.

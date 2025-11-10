@@ -176,9 +176,8 @@ class RealVeoVideoService:
         # Get current settings (allows for testing with mocked settings)
         settings = get_settings()
 
-        # Determine aspect ratio based on common use cases
-        # Default to 16:9 for landscape videos (most common for marketing)
-        aspect_ratio = "16:9"
+        # Use explicit aspect_ratio if provided, otherwise default to 16:9
+        aspect_ratio = config.aspect_ratio if config.aspect_ratio else "16:9"
 
         # Determine duration (Veo 3 supports 4, 6, or 8 seconds)
         # Map requested duration to nearest supported value
@@ -242,6 +241,10 @@ class RealVeoVideoService:
 
         # Download video from GCS
         video_bytes = await self._download_from_gcs(video_uri)
+
+        # Note: File size validation is performed in consume.py after generation
+        # to store warnings in Firestore for user visibility. The video service
+        # focuses solely on video generation and download.
 
         return video_bytes
 

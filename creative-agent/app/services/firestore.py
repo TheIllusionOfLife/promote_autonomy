@@ -1,5 +1,6 @@
 """Firestore service for job status updates."""
 
+from datetime import datetime, timezone
 from typing import Protocol
 
 from promote_autonomy_shared.schemas import Job, JobStatus
@@ -26,6 +27,14 @@ class FirestoreService(Protocol):
         """Update job status and asset URLs."""
         ...
 
+    async def add_job_warning(
+        self,
+        event_id: str,
+        warning_message: str,
+    ) -> Job:
+        """Add a warning message to a job."""
+        ...
+
 
 class MockFirestoreService:
     """Mock Firestore for testing."""
@@ -49,8 +58,6 @@ class MockFirestoreService:
         video_url: str | None = None,
     ) -> Job:
         """Update job in mock database."""
-        from datetime import datetime, timezone
-
         if event_id not in self.jobs:
             raise ValueError(f"Job {event_id} not found")
 
@@ -65,6 +72,21 @@ class MockFirestoreService:
             job_data.setdefault("images", []).append(image_url)
         if video_url:
             job_data.setdefault("videos", []).append(video_url)
+
+        return Job(**job_data)
+
+    async def add_job_warning(
+        self,
+        event_id: str,
+        warning_message: str,
+    ) -> Job:
+        """Add warning to job in mock database."""
+        if event_id not in self.jobs:
+            raise ValueError(f"Job {event_id} not found")
+
+        job_data = self.jobs[event_id]
+        job_data.setdefault("warnings", []).append(warning_message)
+        job_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         return Job(**job_data)
 
@@ -104,7 +126,6 @@ class RealFirestoreService:
         video_url: str | None = None,
     ) -> Job:
         """Update job status in Firestore."""
-        from datetime import datetime, timezone
         from google.cloud.firestore import ArrayUnion
 
         doc_ref = self.db.collection("jobs").document(event_id)
@@ -122,6 +143,33 @@ class RealFirestoreService:
             update_data["images"] = ArrayUnion([image_url])
         if video_url:
             update_data["videos"] = ArrayUnion([video_url])
+
+        doc_ref.update(update_data)
+
+        # Return updated job
+        updated_doc = doc_ref.get()
+        return Job(**updated_doc.to_dict())
+
+    async def add_job_warning(
+        self,
+        event_id: str,
+        warning_message: str,
+    ) -> Job:
+        """Add warning to job in Firestore."""
+        from google.cloud.firestore import ArrayUnion
+
+        doc_ref = self.db.collection("jobs").document(event_id)
+
+        # Check if document exists before updating (prevents race condition)
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise ValueError(f"Job {event_id} not found")
+
+        # Build update data
+        update_data = {
+            "warnings": ArrayUnion([warning_message]),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
         doc_ref.update(update_data)
 

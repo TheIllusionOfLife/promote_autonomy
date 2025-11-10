@@ -5,18 +5,49 @@ import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { strategize, approveJob } from '@/lib/api';
-import type { Job, BrandStyle } from '@/lib/types';
+import type { Job, BrandStyle, Platform } from '@/lib/types';
+import { PLATFORM_SPECS } from '@/lib/types';
 import BrandStyleForm from '@/components/BrandStyleForm';
+
+function detectAspectRatioConflicts(platforms: Platform[]): string[] {
+  if (platforms.length <= 1) return [];
+
+  // Use PLATFORM_SPECS to avoid hardcoding aspect ratios (DRY)
+  const getAspectRatio = (p: Platform) => PLATFORM_SPECS[p].image_aspect_ratio;
+
+  const portrait = platforms.filter(p => getAspectRatio(p) === '9:16');
+  const square = platforms.filter(p => getAspectRatio(p) === '1:1');
+  const landscape = platforms.filter(p => ['16:9', '1.91:1'].includes(getAspectRatio(p)));
+
+  const categoriesUsed = [portrait, square, landscape].filter(c => c.length > 0).length;
+
+  if (categoriesUsed > 1) {
+    const firstPlatform = platforms[0];
+    const firstRatio = getAspectRatio(firstPlatform);
+    const conflicting = platforms.slice(1)
+      .filter(p => getAspectRatio(p) !== firstRatio)
+      .map(p => `${p.replace('_', ' ')} (${getAspectRatio(p)})`);
+
+    if (conflicting.length > 0) {
+      return [`⚠️ Selected platforms have different aspect ratios. Assets will use ${firstPlatform.replace('_', ' ')} format (${firstRatio}). Conflicting: ${conflicting.join(', ')}`];
+    }
+  }
+
+  return [];
+}
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [goal, setGoal] = useState('');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
   const [actualCaptions, setActualCaptions] = useState<string[]>([]);
   const [useBrandStyle, setUseBrandStyle] = useState(false);
   const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
+  const [clientWarnings, setClientWarnings] = useState<string[]>([]);
+  const [strategizeWarnings, setStrategizeWarnings] = useState<string[]>([]);
 
   // Auto sign-in anonymously
   useEffect(() => {
@@ -111,9 +142,15 @@ export default function Home() {
     };
   }, [currentJob?.status, currentJob?.captions?.[0]]);
 
+  // Detect aspect ratio conflicts when platforms change
+  useEffect(() => {
+    const warnings = detectAspectRatioConflicts(selectedPlatforms);
+    setClientWarnings(warnings);
+  }, [selectedPlatforms]);
+
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!goal.trim() || !user) return;
+    if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
 
     setLoading(true);
     setError('');
@@ -121,9 +158,14 @@ export default function Home() {
     try {
       const response = await strategize({
         goal,
+        target_platforms: selectedPlatforms,
         uid: user.uid,
         brand_style: useBrandStyle && brandStyle ? brandStyle : undefined,
       });
+
+      // Store backend warnings from strategy response
+      setStrategizeWarnings(response.warnings || []);
+
       // The job will be populated via Firestore listener
       setCurrentJob({
         event_id: response.event_id,
@@ -139,9 +181,27 @@ export default function Home() {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate strategy');
+      setStrategizeWarnings([]); // Clear stale warnings on error
     } finally {
       setLoading(false);
     }
+  };
+
+  const togglePlatform = (platform: Platform) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(platform)
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
+    );
+  };
+
+  const platformLabels: Record<Platform, string> = {
+    instagram_feed: 'Instagram Feed',
+    instagram_story: 'Instagram Story',
+    twitter: 'X (Twitter)',
+    facebook: 'Facebook',
+    linkedin: 'LinkedIn',
+    youtube: 'YouTube',
   };
 
   const handleApprove = async () => {
@@ -187,6 +247,85 @@ export default function Home() {
             />
           </div>
 
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold' }}>
+              Target Platforms (select at least one):
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              {(Object.keys(platformLabels) as Platform[]).map(platform => (
+                <label
+                  key={platform}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0.75rem',
+                    border: `2px solid ${selectedPlatforms.includes(platform) ? '#0070f3' : '#ddd'}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: selectedPlatforms.includes(platform) ? '#e6f2ff' : 'white',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPlatforms.includes(platform)}
+                    onChange={() => togglePlatform(platform)}
+                    disabled={loading}
+                    style={{ marginRight: '0.5rem', cursor: 'pointer' }}
+                  />
+                  <span>{platformLabels[platform]}</span>
+                </label>
+              ))}
+            </div>
+
+            {selectedPlatforms.length > 0 && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: '#f5f5f5',
+                borderRadius: '4px',
+                fontSize: '0.9rem'
+              }}>
+                <strong>Selected Platforms ({selectedPlatforms.length}):</strong>
+                <div style={{ marginTop: '0.5rem' }}>
+                  {selectedPlatforms.map(platform => {
+                    const spec = PLATFORM_SPECS[platform];
+                    return (
+                      <div key={platform} style={{ marginBottom: '0.5rem', paddingLeft: '1rem' }}>
+                        <strong>{platformLabels[platform]}:</strong>{' '}
+                        Image {spec.image_aspect_ratio} ({spec.image_size}),
+                        Video {spec.video_aspect_ratio} (max {spec.max_video_length_sec}s),
+                        Captions max {spec.caption_max_length} chars
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Client-side aspect ratio warnings */}
+          {clientWarnings.length > 0 && (
+            <div style={{
+              background: '#fffbeb',
+              borderLeft: '4px solid #f59e0b',
+              padding: '1rem',
+              marginBottom: '1rem',
+              borderRadius: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  {clientWarnings.map((warning, idx) => (
+                    <p key={idx} style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
+                      {warning}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Brand Style Guide Toggle */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
@@ -220,15 +359,15 @@ export default function Home() {
 
           <button
             type="submit"
-            disabled={loading || !goal.trim()}
+            disabled={loading || !goal.trim() || selectedPlatforms.length === 0}
             style={{
               padding: '0.75rem 1.5rem',
               fontSize: '1rem',
-              background: '#0070f3',
+              background: (loading || !goal.trim() || selectedPlatforms.length === 0) ? '#ccc' : '#0070f3',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || !goal.trim() || selectedPlatforms.length === 0) ? 'not-allowed' : 'pointer',
             }}
           >
             {loading ? 'Generating...' : 'Generate Strategy'}
@@ -250,6 +389,11 @@ export default function Home() {
               <strong>Goal:</strong> {currentJob.task_list.goal}
             </p>
 
+            <p style={{ marginBottom: '1rem' }}>
+              <strong>Target Platforms:</strong>{' '}
+              {currentJob.task_list.target_platforms.map(p => platformLabels[p]).join(', ')}
+            </p>
+
             {currentJob.task_list.captions && (
               <p style={{ marginBottom: '1rem' }}>
                 <strong>Captions:</strong> {currentJob.task_list.captions.n} {currentJob.task_list.captions.style} captions
@@ -266,6 +410,32 @@ export default function Home() {
               <p style={{ overflowWrap: 'break-word', marginBottom: '1rem' }}>
                 <strong>Video:</strong> {currentJob.task_list.video.duration_sec}s - {currentJob.task_list.video.prompt}
               </p>
+            )}
+
+            {/* Backend strategy warnings */}
+            {strategizeWarnings.length > 0 && (
+              <div style={{
+                background: '#fffbeb',
+                borderLeft: '4px solid #f59e0b',
+                padding: '1rem',
+                marginTop: '1rem',
+                marginBottom: '1rem',
+                borderRadius: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ color: '#92400e', display: 'block', marginBottom: '0.5rem' }}>
+                      Strategy Warnings
+                    </strong>
+                    {strategizeWarnings.map((warning, idx) => (
+                      <p key={idx} style={{ margin: '0.25rem 0', color: '#92400e', fontSize: '0.9rem' }}>
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
 
             {currentJob.status === 'pending_approval' && (
@@ -289,6 +459,31 @@ export default function Home() {
 
             {currentJob.status === 'completed' && (
               <div style={{ marginTop: '1rem' }}>
+                {/* Job warnings from asset generation */}
+                {currentJob.warnings && currentJob.warnings.length > 0 && (
+                  <div style={{
+                    background: '#fffbeb',
+                    borderLeft: '4px solid #f59e0b',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#92400e', display: 'block', marginBottom: '0.5rem' }}>
+                          Asset Generation Warnings ({currentJob.warnings.length})
+                        </strong>
+                        {currentJob.warnings.map((warning, idx) => (
+                          <p key={idx} style={{ margin: '0.5rem 0', color: '#92400e', fontSize: '0.9rem' }}>
+                            • {warning}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <h4>Generated Assets:</h4>
 
                 {actualCaptions.length > 0 && (

@@ -11,6 +11,10 @@ class StrategizeResponse(BaseModel):
     status: JobStatus = Field(description="Job status (pending_approval)")
     task_list: TaskList = Field(description="The generated task list for approval")
     message: str = Field(description="Human-readable message")
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Warnings about potential issues (e.g., conflicting aspect ratios)",
+    )
 
 
 class ApproveResponse(BaseModel):

@@ -79,6 +79,102 @@ class BrandStyle(BaseModel):
     )
 
 
+class Platform(str, Enum):
+    """Supported social media platforms."""
+
+    INSTAGRAM_FEED = "instagram_feed"
+    INSTAGRAM_STORY = "instagram_story"
+    TWITTER = "twitter"
+    FACEBOOK = "facebook"
+    LINKEDIN = "linkedin"
+    YOUTUBE = "youtube"
+
+
+class PlatformSpec(BaseModel):
+    """Platform-specific asset requirements."""
+
+    platform: Platform = Field(description="Target platform")
+    image_size: str = Field(description="Image size in WIDTHxHEIGHT format")
+    image_aspect_ratio: str = Field(description="Image aspect ratio (e.g., '1:1', '16:9')")
+    max_image_size_mb: float = Field(description="Maximum image file size in MB")
+    video_size: str = Field(description="Video resolution in WIDTHxHEIGHT format")
+    video_aspect_ratio: str = Field(description="Video aspect ratio (e.g., '16:9', '9:16')")
+    max_video_length_sec: int = Field(description="Maximum video length in seconds")
+    max_video_size_mb: float = Field(description="Maximum video file size in MB")
+    caption_max_length: int = Field(description="Maximum caption length in characters")
+
+
+# Platform-specific specifications
+PLATFORM_SPECS: dict[Platform, PlatformSpec] = {
+    Platform.INSTAGRAM_FEED: PlatformSpec(
+        platform=Platform.INSTAGRAM_FEED,
+        image_size="1080x1080",
+        image_aspect_ratio="1:1",
+        max_image_size_mb=4.0,
+        video_size="1080x1080",
+        video_aspect_ratio="1:1",
+        max_video_length_sec=60,
+        max_video_size_mb=4.0,
+        caption_max_length=2200,
+    ),
+    Platform.INSTAGRAM_STORY: PlatformSpec(
+        platform=Platform.INSTAGRAM_STORY,
+        image_size="1080x1920",
+        image_aspect_ratio="9:16",
+        max_image_size_mb=4.0,
+        video_size="1080x1920",
+        video_aspect_ratio="9:16",
+        max_video_length_sec=15,
+        max_video_size_mb=4.0,
+        caption_max_length=2200,
+    ),
+    Platform.TWITTER: PlatformSpec(
+        platform=Platform.TWITTER,
+        image_size="1200x675",
+        image_aspect_ratio="16:9",
+        max_image_size_mb=5.0,
+        video_size="1280x720",
+        video_aspect_ratio="16:9",
+        max_video_length_sec=140,
+        max_video_size_mb=512.0,
+        caption_max_length=280,
+    ),
+    Platform.FACEBOOK: PlatformSpec(
+        platform=Platform.FACEBOOK,
+        image_size="1200x630",
+        image_aspect_ratio="1.91:1",
+        max_image_size_mb=8.0,
+        video_size="1280x720",
+        video_aspect_ratio="16:9",
+        max_video_length_sec=240,
+        max_video_size_mb=4096.0,
+        caption_max_length=63206,
+    ),
+    Platform.LINKEDIN: PlatformSpec(
+        platform=Platform.LINKEDIN,
+        image_size="1200x627",
+        image_aspect_ratio="1.91:1",
+        max_image_size_mb=5.0,
+        video_size="1280x720",
+        video_aspect_ratio="16:9",
+        max_video_length_sec=600,
+        max_video_size_mb=5120.0,
+        caption_max_length=3000,
+    ),
+    Platform.YOUTUBE: PlatformSpec(
+        platform=Platform.YOUTUBE,
+        image_size="1280x720",
+        image_aspect_ratio="16:9",
+        max_image_size_mb=2.0,
+        video_size="1920x1080",
+        video_aspect_ratio="16:9",
+        max_video_length_sec=60,
+        max_video_size_mb=256.0,
+        caption_max_length=5000,
+    ),
+}
+
+
 class CaptionTaskConfig(BaseModel):
     """Configuration for caption generation task."""
 
@@ -96,6 +192,14 @@ class ImageTaskConfig(BaseModel):
     size: str = Field(
         default="1024x1024",
         description="Image size (e.g., '1024x1024', '1024x1792')",
+    )
+    aspect_ratio: Optional[str] = Field(
+        default=None,
+        description="Target aspect ratio (e.g., '1:1', '16:9', '9:16')",
+    )
+    max_file_size_mb: Optional[float] = Field(
+        default=None,
+        description="Maximum file size in megabytes",
     )
 
     @field_validator("size")
@@ -118,6 +222,19 @@ class ImageTaskConfig(BaseModel):
 
         return v
 
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect_ratio_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate aspect ratio format is N:M or N.N:M."""
+        if v is None:
+            return v
+        if not re.match(r"^\d+(?:\.\d+)?:\d+(?:\.\d+)?$", v):
+            raise ValueError(
+                f"Invalid aspect ratio format '{v}'. Expected format: 'N:M' "
+                "(e.g., '1:1', '16:9', '1.91:1')"
+            )
+        return v
+
 
 class VideoTaskConfig(BaseModel):
     """Configuration for video generation task."""
@@ -126,15 +243,40 @@ class VideoTaskConfig(BaseModel):
     duration_sec: int = Field(
         default=15,
         ge=4,
-        le=60,
-        description="Video duration in seconds (VEO 3.0 supports 4, 6, or 8 seconds)",
+        le=600,
+        description="Video duration in seconds (platform limits vary: Instagram Story 15s, Twitter 140s, LinkedIn 600s)",
     )
+    aspect_ratio: Optional[str] = Field(
+        default=None,
+        description="Target aspect ratio (e.g., '16:9', '9:16', '1:1')",
+    )
+    max_file_size_mb: Optional[float] = Field(
+        default=None,
+        description="Maximum file size in megabytes",
+    )
+
+    @field_validator("aspect_ratio")
+    @classmethod
+    def validate_aspect_ratio_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate aspect ratio format is N:M or N.N:M."""
+        if v is None:
+            return v
+        if not re.match(r"^\d+(?:\.\d+)?:\d+(?:\.\d+)?$", v):
+            raise ValueError(
+                f"Invalid aspect ratio format '{v}'. Expected format: 'N:M' "
+                "(e.g., '1:1', '16:9', '1.91:1')"
+            )
+        return v
 
 
 class TaskList(BaseModel):
     """Task list defining what assets to generate."""
 
     goal: str = Field(description="High-level marketing goal")
+    target_platforms: list[Platform] = Field(
+        description="Target social media platforms for this campaign",
+        min_length=1,
+    )
     brand_style: Optional[BrandStyle] = Field(
         default=None,
         description="Brand style guide for consistent asset generation (optional)",
@@ -153,17 +295,20 @@ class TaskList(BaseModel):
     )
 
     @model_validator(mode='after')
-    def at_least_one_task(self):
-        """Validate that at least one task type is specified."""
+    def validate_task_list(self):
+        """Validate task list constraints."""
+        # At least one task must be specified
         if not (self.captions or self.image or self.video):
             raise ValueError(
                 "At least one task (captions, image, or video) must be specified. "
                 "Cannot create a job with no assets to generate."
             )
+
         return self
 
     model_config = {"json_schema_extra": {"example": {
         "goal": "Increase awareness of new feature",
+        "target_platforms": ["instagram_feed", "twitter"],
         "captions": {"n": 3, "style": "twitter"},
         "image": {
             "prompt": "Clean blue modern promo visual",
@@ -201,6 +346,10 @@ class Job(BaseModel):
         default_factory=list,
         description="Optional approval audit trail",
     )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Warning messages about asset generation (e.g., file size limits exceeded)",
+    )
 
     model_config = {"json_schema_extra": {"example": {
         "event_id": "01JD4S3ABCXYZ",
@@ -216,4 +365,5 @@ class Job(BaseModel):
         "images": [],
         "videos": [],
         "audit_logs": [],
+        "warnings": [],
     }}}

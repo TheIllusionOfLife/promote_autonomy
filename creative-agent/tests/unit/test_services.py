@@ -103,6 +103,49 @@ class TestMockImageService:
             expected_width, expected_height = map(int, size.split("x"))
             assert img.size == (expected_width, expected_height)
 
+    @pytest.mark.asyncio
+    async def test_generate_image_with_aspect_ratio(self):
+        """Test image generation with explicit aspect ratio specification."""
+        from PIL import Image
+        from io import BytesIO
+
+        service = MockImageService()
+
+        # Test different aspect ratios
+        test_cases = [
+            ("1024x1024", "1:1", (1024, 1024)),
+            ("1080x1920", "9:16", (1080, 1920)),
+            ("1920x1080", "16:9", (1920, 1080)),
+        ]
+
+        for size, aspect_ratio, expected_dims in test_cases:
+            config = ImageTaskConfig(
+                prompt="Test",
+                size=size,
+                aspect_ratio=aspect_ratio,
+            )
+            image_bytes = await service.generate_image(config)
+
+            img = Image.open(BytesIO(image_bytes))
+            assert img.size == expected_dims
+
+    @pytest.mark.asyncio
+    async def test_generate_image_respects_max_file_size(self):
+        """Test image compression when max_file_size_mb is specified."""
+        service = MockImageService()
+
+        # Generate image with max file size constraint
+        config = ImageTaskConfig(
+            prompt="High quality test image",
+            size="1920x1080",
+            max_file_size_mb=1.0,  # 1 MB limit
+        )
+        image_bytes = await service.generate_image(config)
+
+        # Verify size constraint is respected (within reasonable margin)
+        size_mb = len(image_bytes) / (1024 * 1024)
+        assert size_mb <= 1.1  # Allow 10% margin for compression variation
+
 
 class TestMockVideoService:
     """Tests for MockVideoService."""
@@ -133,6 +176,43 @@ class TestMockVideoService:
             assert isinstance(video_bytes, bytes)
             assert len(video_bytes) > 0
 
+    @pytest.mark.asyncio
+    async def test_generate_video_with_aspect_ratio(self):
+        """Test video generation with explicit aspect ratio specification."""
+        service = MockVideoService()
+
+        # Test different aspect ratios
+        aspect_ratios = ["16:9", "9:16", "1:1"]
+
+        for aspect_ratio in aspect_ratios:
+            config = VideoTaskConfig(
+                prompt="Test video",
+                duration_sec=10,
+                aspect_ratio=aspect_ratio,
+            )
+            video_bytes = await service.generate_video(config)
+
+            assert isinstance(video_bytes, bytes)
+            assert len(video_bytes) > 0
+            assert b"ftyp" in video_bytes[:32]
+
+    @pytest.mark.asyncio
+    async def test_generate_video_respects_max_file_size(self):
+        """Test video compression when max_file_size_mb is specified."""
+        service = MockVideoService()
+
+        # Generate video with max file size constraint
+        config = VideoTaskConfig(
+            prompt="Test video with size limit",
+            duration_sec=15,
+            max_file_size_mb=10.0,  # 10 MB limit
+        )
+        video_bytes = await service.generate_video(config)
+
+        # Verify size constraint is respected (mock service creates small files anyway)
+        size_mb = len(video_bytes) / (1024 * 1024)
+        assert size_mb <= 10.1  # Allow small margin
+
 
 class TestMockFirestoreService:
     """Tests for MockFirestoreService."""
@@ -152,7 +232,11 @@ class TestMockFirestoreService:
         service = MockFirestoreService()
 
         # Manually add a job
-        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
         service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",
@@ -174,7 +258,11 @@ class TestMockFirestoreService:
         service = MockFirestoreService()
 
         # Create initial job
-        task_list = TaskList(goal="Test goal", captions=CaptionTaskConfig(n=1))
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
         service.jobs["test-event-id"] = {
             "event_id": "test-event-id",
             "uid": "test-user",
@@ -202,6 +290,82 @@ class TestMockFirestoreService:
 
         with pytest.raises(ValueError, match="not found"):
             await service.update_job_status("nonexistent-id", JobStatus.COMPLETED)
+
+    @pytest.mark.asyncio
+    async def test_add_job_warning(self):
+        """Test adding warning to existing job."""
+        service = MockFirestoreService()
+
+        # Create initial job
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
+        service.jobs["test-event-id"] = {
+            "event_id": "test-event-id",
+            "uid": "test-user",
+            "status": JobStatus.PROCESSING,
+            "task_list": task_list.model_dump(),
+            "created_at": "2025-11-08T10:00:00Z",
+            "updated_at": "2025-11-08T10:00:00Z",
+            "warnings": [],
+        }
+
+        # Add warning
+        updated_job = await service.add_job_warning(
+            "test-event-id",
+            "Video file size (5.2 MB) exceeds platform limit (4.0 MB)"
+        )
+
+        assert len(updated_job.warnings) == 1
+        assert "5.2 MB" in updated_job.warnings[0]
+        assert "4.0 MB" in updated_job.warnings[0]
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_warnings(self):
+        """Test adding multiple warnings to same job."""
+        service = MockFirestoreService()
+
+        # Create initial job
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["instagram_story", "twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
+        service.jobs["test-event-id"] = {
+            "event_id": "test-event-id",
+            "uid": "test-user",
+            "status": JobStatus.PROCESSING,
+            "task_list": task_list.model_dump(),
+            "created_at": "2025-11-08T10:00:00Z",
+            "updated_at": "2025-11-08T10:00:00Z",
+            "warnings": [],
+        }
+
+        # Add first warning
+        await service.add_job_warning(
+            "test-event-id",
+            "Video file size exceeds limit"
+        )
+
+        # Add second warning
+        updated_job = await service.add_job_warning(
+            "test-event-id",
+            "Image quality reduced due to size constraints"
+        )
+
+        assert len(updated_job.warnings) == 2
+        assert "Video file size" in updated_job.warnings[0]
+        assert "Image quality" in updated_job.warnings[1]
+
+    @pytest.mark.asyncio
+    async def test_add_warning_to_nonexistent_job_raises_error(self):
+        """Test adding warning to nonexistent job raises error."""
+        service = MockFirestoreService()
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.add_job_warning("nonexistent-id", "Some warning")
 
 
 class TestMockStorageService:

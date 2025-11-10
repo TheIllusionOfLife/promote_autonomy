@@ -3,7 +3,7 @@
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from promote_autonomy_shared.schemas import BrandStyle
+from promote_autonomy_shared.schemas import BrandStyle, Platform
 
 
 class StrategizeRequest(BaseModel):
@@ -14,6 +14,11 @@ class StrategizeRequest(BaseModel):
         min_length=10,
         max_length=500,
         examples=["Launch awareness campaign for new AI feature"],
+    )
+    target_platforms: list[Platform] = Field(
+        description="Target social media platforms for this campaign",
+        min_length=1,
+        examples=[["instagram_feed", "twitter"]],
     )
     uid: str = Field(
         description="User ID from Firebase Auth",

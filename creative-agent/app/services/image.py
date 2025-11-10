@@ -154,19 +154,23 @@ class RealImageService:
         # Parse size
         width, height = map(int, config.size.split("x"))
 
-        # Determine aspect ratio for Imagen
-        # Imagen supports: 1:1, 9:16, 16:9, 4:3, 3:4
-        aspect_ratio = width / height
-        if aspect_ratio > 1.5:
-            imagen_aspect_ratio = "16:9"
-        elif aspect_ratio < 0.7:
-            imagen_aspect_ratio = "9:16"
-        elif aspect_ratio > 1.2:
-            imagen_aspect_ratio = "4:3"
-        elif aspect_ratio < 0.85:
-            imagen_aspect_ratio = "3:4"
+        # Use explicit aspect_ratio if provided, otherwise calculate from size
+        if config.aspect_ratio:
+            imagen_aspect_ratio = config.aspect_ratio
         else:
-            imagen_aspect_ratio = "1:1"
+            # Determine aspect ratio for Imagen
+            # Imagen supports: 1:1, 9:16, 16:9, 4:3, 3:4
+            aspect_ratio = width / height
+            if aspect_ratio > 1.5:
+                imagen_aspect_ratio = "16:9"
+            elif aspect_ratio < 0.7:
+                imagen_aspect_ratio = "9:16"
+            elif aspect_ratio > 1.2:
+                imagen_aspect_ratio = "4:3"
+            elif aspect_ratio < 0.85:
+                imagen_aspect_ratio = "3:4"
+            else:
+                imagen_aspect_ratio = "1:1"
 
         # Enhance prompt with brand colors if provided
         enhanced_prompt = config.prompt
@@ -206,11 +210,54 @@ class RealImageService:
         # Resize to exact requested dimensions if needed
         if pil_image.size != (width, height):
             pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
+
+        # Apply file size compression if max_file_size_mb is specified
+        if config.max_file_size_mb:
+            image_bytes = self._compress_to_max_size(pil_image, config.max_file_size_mb)
+        else:
             buffer = BytesIO()
             pil_image.save(buffer, format="PNG")
-            return buffer.getvalue()
+            image_bytes = buffer.getvalue()
 
         return image_bytes
+
+    def _compress_to_max_size(self, image: Image.Image, max_size_mb: float) -> bytes:
+        """Compress image to meet file size constraint.
+
+        Args:
+            image: PIL Image to compress
+            max_size_mb: Maximum file size in megabytes
+
+        Returns:
+            Compressed image bytes in JPEG format (better compression than PNG)
+        """
+        max_size_bytes = int(max_size_mb * 1024 * 1024)
+
+        # Convert RGBA/LA/P modes to RGB for JPEG compatibility
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+
+        # Start with high quality JPEG
+        quality = 95
+        buffer = BytesIO()
+
+        while quality > 10:
+            buffer.seek(0)
+            buffer.truncate()
+            image.save(buffer, format="JPEG", quality=quality, optimize=True)
+            size = buffer.tell()
+
+            if size <= max_size_bytes:
+                return buffer.getvalue()
+
+            # Reduce quality by 10 each iteration
+            quality -= 10
+
+        # If still too large, return at minimum quality
+        buffer.seek(0)
+        buffer.truncate()
+        image.save(buffer, format="JPEG", quality=10, optimize=True)
+        return buffer.getvalue()
 
 
 # Service instance management
