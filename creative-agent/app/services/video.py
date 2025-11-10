@@ -93,6 +93,56 @@ class RealVeoVideoService:
         "technical": "precise, detailed style",
     }
 
+    @staticmethod
+    def _hex_to_color_name(hex_code: str) -> str:
+        """Convert hex code to approximate color name for natural language prompts.
+
+        Args:
+            hex_code: 6-character hex code (e.g., '4D18C9', 'FF0000')
+
+        Returns:
+            Approximate color name (e.g., 'purple', 'red', 'blue')
+        """
+        # Convert hex to RGB
+        r = int(hex_code[0:2], 16)
+        g = int(hex_code[2:4], 16)
+        b = int(hex_code[4:6], 16)
+
+        # Simple heuristic-based color naming
+        # Check for grayscale first
+        if abs(r - g) < 30 and abs(g - b) < 30 and abs(r - b) < 30:
+            if r < 50:
+                return "black"
+            elif r > 200:
+                return "white"
+            else:
+                return "gray"
+
+        # Find dominant channel
+        max_channel = max(r, g, b)
+        min_channel = min(r, g, b)
+
+        # Low saturation = gray
+        if max_channel - min_channel < 50:
+            return "gray"
+
+        # Determine hue-based color
+        if r == max_channel:
+            if g > b:
+                return "orange" if g > r * 0.6 else "red"
+            else:
+                return "pink" if b > r * 0.5 else "red"
+        elif g == max_channel:
+            if r > b:
+                return "yellow" if r > g * 0.7 else "green"
+            else:
+                return "cyan" if b > g * 0.7 else "green"
+        else:  # b == max_channel
+            if r > g:
+                return "purple" if r > b * 0.6 else "blue"
+            else:
+                return "blue"
+
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
         settings = get_settings()
@@ -163,9 +213,13 @@ class RealVeoVideoService:
                     (c for c in brand_style.colors if c.usage == "primary"),
                     brand_style.colors[0]
                 )
-                # Natural color description without hex codes (VEO interprets literally)
-                color_name = primary_color.name if primary_color.name else "the brand color"
-                enhanced_prompt += f" Incorporate {color_name} as a prominent visual accent throughout."
+                # Use hex_code as source of truth, name is just a label
+                # Convert hex to approximate color name for natural language prompts
+                color_description = self._hex_to_color_name(primary_color.hex_code)
+                # If user provided a name, mention it for context
+                if primary_color.name:
+                    color_description = f"{primary_color.name} ({color_description})"
+                enhanced_prompt += f" Incorporate {color_description} tones as a prominent visual accent throughout."
 
         # Validate prompt length to prevent abuse and API errors
         MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts
