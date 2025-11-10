@@ -186,6 +186,15 @@ export default function Home() {
     e.preventDefault();
     if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
 
+    // Validate brand style if enabled
+    if (useBrandStyle && brandStyle) {
+      const invalidColors = brandStyle.colors.some(c => !c.name || !c.hex_code);
+      if (invalidColors) {
+        setError('Please complete all brand color fields (name and color)');
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
 

@@ -46,13 +46,23 @@ class MockImageService:
                 (c for c in brand_style.colors if c.usage == "primary"),
                 brand_style.colors[0]
             )
-            # Convert hex to RGB tuple with explicit unpacking for type safety
+            # Convert hex to RGB tuple with defensive validation
             hex_code = primary_color.hex_code
-            bg_color = (
-                int(hex_code[0:2], 16),
-                int(hex_code[2:4], 16),
-                int(hex_code[4:6], 16)
-            )
+            if len(hex_code) != 6:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid hex code length: {hex_code}, using default color")
+            else:
+                try:
+                    bg_color = (
+                        int(hex_code[0:2], 16),
+                        int(hex_code[2:4], 16),
+                        int(hex_code[4:6], 16)
+                    )
+                except ValueError as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid hex code format: {hex_code}, error: {e}, using default color")
 
         # Create image with solid color background
         img = Image.new("RGB", (width, height), color=bg_color)

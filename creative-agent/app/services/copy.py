@@ -155,11 +155,9 @@ Return ONLY the captions, one per line, numbered 1-{config.n}."""
         captions = captions[:config.n]
 
         # Enforce tagline inclusion if provided
-        # Use word boundary matching to avoid false positives (e.g., "Smart" in "Smartphone")
+        # Use simple case-insensitive substring check (word boundaries fail with punctuation)
         if brand_style and brand_style.tagline and captions:
-            # Escape special regex characters and use word boundaries for exact phrase matching
-            pattern = re.compile(rf'\b{re.escape(brand_style.tagline)}\b', re.IGNORECASE)
-            has_tagline = any(pattern.search(caption) for caption in captions)
+            has_tagline = any(brand_style.tagline.lower() in caption.lower() for caption in captions)
             if not has_tagline:
                 # Add tagline to first caption
                 captions[0] = f"{captions[0]} | {brand_style.tagline}"
