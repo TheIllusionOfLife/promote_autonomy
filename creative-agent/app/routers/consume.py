@@ -240,6 +240,12 @@ Return results in JSON format with URLs for all generated assets:
             session_service=session_service
         )
 
+        # Create session explicitly (InMemorySessionService requires this)
+        # Use event_id as session_id for traceability
+        user_id = "creative-agent"
+        session_id = event_id
+        await session_service.create_session(user_id=user_id, session_id=session_id)
+
         # Create content message for the agent
         user_message = types.Content(
             role='user',
@@ -253,8 +259,8 @@ Return results in JSON format with URLs for all generated assets:
         # the final response text from the LLM.
         def run_agent():
             events = runner.run(
-                user_id="creative-agent",
-                session_id=event_id,  # Use event_id as session_id for traceability
+                user_id=user_id,
+                session_id=session_id,
                 new_message=user_message
             )
             # Collect final response from events
