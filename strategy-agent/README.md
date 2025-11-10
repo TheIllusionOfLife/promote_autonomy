@@ -8,10 +8,52 @@ The Strategy Agent generates marketing task lists using Gemini AI and manages th
 
 ## Endpoints
 
-- `POST /api/strategize` - Generate marketing strategy from goal
-- `POST /api/approve` - Approve pending job and trigger asset generation
-- `GET /health` - Health check for Cloud Run
-- `GET /docs` - OpenAPI documentation
+### POST /api/strategize
+
+Generate marketing strategy from goal with optional product image.
+
+**Content-Type**: `multipart/form-data`
+
+**Form Fields**:
+- `goal` (required): Marketing goal (10-500 characters)
+- `target_platforms` (required): JSON array of platform names (e.g., `["instagram_feed", "twitter"]`)
+- `uid` (required): Firebase user ID
+- `reference_image` (optional): Product image file (PNG/JPEG, max 10MB)
+
+**Headers**:
+- `Authorization: Bearer {firebase_id_token}` (required)
+
+**Response**: Returns task list with status `pending_approval`
+
+**New Feature**: When `reference_image` is provided:
+1. Uploads image to Cloud Storage
+2. Analyzes image with Gemini Vision API (product type, colors, composition, mood, brand elements)
+3. Incorporates analysis into task list generation for visually consistent marketing assets
+
+### POST /api/approve
+
+Approve pending job and trigger asset generation.
+
+**Content-Type**: `application/json`
+
+**Request Body**:
+```json
+{
+  "event_id": "01ABCDEF...",
+  "uid": "firebase_user_id"
+}
+```
+
+**Headers**:
+- `Authorization: Bearer {firebase_id_token}` (required)
+
+### GET /health
+
+Health check for Cloud Run.
+
+### GET /docs
+
+OpenAPI documentation.
 
 ## Development
 
@@ -66,8 +108,23 @@ uv run mypy app/
 The service supports mock mode for rapid development:
 
 - `USE_MOCK_GEMINI=true` - Mock AI responses (no Vertex AI calls)
+- `USE_MOCK_STORAGE=true` - Mock Cloud Storage (no real uploads)
 - `USE_MOCK_FIRESTORE=true` - In-memory storage (no Firestore)
 - `USE_MOCK_PUBSUB=true` - Mock message publishing (no Pub/Sub)
+
+### Integration Testing
+
+Run integration tests with real Gemini Vision API:
+
+```bash
+# Requires: USE_MOCK_GEMINI=false in .env
+uv run python test_reference_image_integration.py
+```
+
+This validates:
+- Gemini Vision API image analysis (real API call)
+- Task list generation with reference context
+- Analysis quality and context incorporation
 
 ## Deployment
 

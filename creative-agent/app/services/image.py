@@ -1,10 +1,10 @@
 """Image generation service."""
 
-from typing import Protocol
+from typing import Optional, Protocol
 from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
-from promote_autonomy_shared.schemas import ImageTaskConfig
+from promote_autonomy_shared.schemas import BrandStyle, ImageTaskConfig
 
 from app.core.config import get_settings
 
@@ -13,11 +13,14 @@ from app.core.config import get_settings
 class ImageService(Protocol):
     """Protocol for image generation services."""
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate image from prompt.
 
         Args:
             config: Image generation configuration
+            brand_style: Brand style guide (optional)
 
         Returns:
             Image bytes (PNG format)
@@ -28,13 +31,41 @@ class ImageService(Protocol):
 class MockImageService:
     """Mock image generation for testing."""
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate placeholder image with text overlay."""
         # Parse size (e.g., "1024x1024")
         width, height = map(int, config.size.split("x"))
 
+        # Use brand primary color if available, otherwise default
+        bg_color = (100, 149, 237)  # Default: Cornflower blue
+        if brand_style and brand_style.colors:
+            # Find primary color, fallback to first if no primary specified
+            primary_color = next(
+                (c for c in brand_style.colors if c.usage == "primary"),
+                brand_style.colors[0]
+            )
+            # Convert hex to RGB tuple with defensive validation
+            hex_code = primary_color.hex_code
+            if len(hex_code) != 6:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid hex code length: {hex_code}, using default color")
+            else:
+                try:
+                    bg_color = (
+                        int(hex_code[0:2], 16),
+                        int(hex_code[2:4], 16),
+                        int(hex_code[4:6], 16)
+                    )
+                except ValueError as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid hex code format: {hex_code}, error: {e}, using default color")
+
         # Create image with solid color background
-        img = Image.new("RGB", (width, height), color=(100, 149, 237))  # Cornflower blue
+        img = Image.new("RGB", (width, height), color=bg_color)
 
         # Add text overlay
         draw = ImageDraw.Draw(img)
@@ -130,7 +161,9 @@ class RealImageService:
         vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
         self.model = ImageGenerationModel.from_pretrained(settings.IMAGEN_MODEL)
 
-    async def generate_image(self, config: ImageTaskConfig) -> bytes:
+    async def generate_image(
+        self, config: ImageTaskConfig, brand_style: Optional[BrandStyle] = None
+    ) -> bytes:
         """Generate image using Imagen."""
         # Parse size
         width, height = map(int, config.size.split("x"))
@@ -153,9 +186,25 @@ class RealImageService:
             else:
                 imagen_aspect_ratio = "1:1"
 
+        # Enhance prompt with brand colors if provided
+        enhanced_prompt = config.prompt
+        if brand_style and brand_style.colors:
+            # Find primary color, fallback to first if no primary specified
+            primary_color = next(
+                (c for c in brand_style.colors if c.usage == "primary"),
+                brand_style.colors[0]
+            )
+            # Include primary color prominently, then other colors
+            other_colors = [c for c in brand_style.colors[:3] if c != primary_color]
+            color_desc = f"Primary color: {primary_color.name} (#{primary_color.hex_code})"
+            if other_colors:
+                other_desc = ", ".join([f"{c.name} (#{c.hex_code})" for c in other_colors])
+                color_desc += f". Additional colors: {other_desc}"
+            enhanced_prompt = f"{config.prompt}. {color_desc}."
+
         # Generate image
         response = self.model.generate_images(
-            prompt=config.prompt,
+            prompt=enhanced_prompt,
             number_of_images=1,
             aspect_ratio=imagen_aspect_ratio,
         )

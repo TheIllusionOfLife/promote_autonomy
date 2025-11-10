@@ -1,7 +1,9 @@
 """API request models."""
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
-from promote_autonomy_shared.schemas import Platform
+from promote_autonomy_shared.schemas import BrandStyle, Platform
 
 
 class StrategizeRequest(BaseModel):
@@ -21,6 +23,10 @@ class StrategizeRequest(BaseModel):
     uid: str = Field(
         description="User ID from Firebase Auth",
         examples=["user_abc123"],
+    )
+    brand_style: Optional[BrandStyle] = Field(
+        default=None,
+        description="Brand style guide for consistent asset generation (optional)",
     )
 
 

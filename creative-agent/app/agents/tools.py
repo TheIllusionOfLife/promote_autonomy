@@ -13,6 +13,7 @@ from promote_autonomy_shared.schemas import (
     CaptionTaskConfig,
     ImageTaskConfig,
     VideoTaskConfig,
+    BrandStyle,
 )
 
 from app.services.copy import get_copy_service
@@ -26,7 +27,8 @@ logger = logging.getLogger(__name__)
 async def generate_captions_tool(
     config: dict[str, Any],
     goal: str,
-    event_id: str
+    event_id: str,
+    brand_style: dict[str, Any] | None = None
 ) -> dict[str, str]:
     """Generate social media captions using Gemini and upload to Cloud Storage.
 
@@ -34,6 +36,7 @@ async def generate_captions_tool(
         config: Caption configuration with keys 'n' (int) and 'style' (str)
         goal: Marketing goal for context
         event_id: Job ID for storage path
+        brand_style: Optional brand style guidelines with keys 'tone', 'colors', 'tagline'
 
     Returns:
         Dict with captions_url key containing the Cloud Storage URL
@@ -52,8 +55,11 @@ async def generate_captions_tool(
         copy_service = get_copy_service()
         storage_service = get_storage_service()
 
+        # Parse brand style if provided
+        brand_style_obj = BrandStyle(**brand_style) if brand_style else None
+
         # Generate captions
-        captions = await copy_service.generate_captions(caption_config, goal)
+        captions = await copy_service.generate_captions(caption_config, goal, brand_style_obj)
         logger.info(f"[ADK Tool] Generated {len(captions)} captions for event {event_id}")
 
         # Upload to storage
@@ -75,13 +81,15 @@ async def generate_captions_tool(
 
 async def generate_image_tool(
     config: dict[str, Any],
-    event_id: str
+    event_id: str,
+    brand_style: dict[str, Any] | None = None
 ) -> dict[str, str]:
     """Generate promotional images using Imagen and upload to Cloud Storage.
 
     Args:
         config: Image configuration with keys 'prompt', 'size', 'aspect_ratio', 'max_file_size_mb'
         event_id: Job ID for storage path
+        brand_style: Optional brand style guidelines with keys 'tone', 'colors', 'tagline'
 
     Returns:
         Dict with image_url key containing the Cloud Storage URL
@@ -100,8 +108,11 @@ async def generate_image_tool(
         image_service = get_image_service()
         storage_service = get_storage_service()
 
+        # Parse brand style if provided
+        brand_style_obj = BrandStyle(**brand_style) if brand_style else None
+
         # Generate image
-        image_bytes = await image_service.generate_image(image_config)
+        image_bytes = await image_service.generate_image(image_config, brand_style_obj)
         logger.info(f"[ADK Tool] Generated image ({len(image_bytes)} bytes) for event {event_id}")
 
         # Determine format based on compression
@@ -130,13 +141,15 @@ async def generate_image_tool(
 
 async def generate_video_tool(
     config: dict[str, Any],
-    event_id: str
+    event_id: str,
+    brand_style: dict[str, Any] | None = None
 ) -> dict[str, str]:
     """Generate promotional videos using Veo and upload to Cloud Storage.
 
     Args:
         config: Video configuration with keys 'prompt', 'duration_sec', 'aspect_ratio', 'max_file_size_mb'
         event_id: Job ID for storage path
+        brand_style: Optional brand style guidelines with keys 'tone', 'colors', 'tagline'
 
     Returns:
         Dict with video_url key, and optional 'warning' key if size exceeds limit
@@ -162,8 +175,11 @@ async def generate_video_tool(
         video_service = get_video_service()
         storage_service = get_storage_service()
 
+        # Parse brand style if provided
+        brand_style_obj = BrandStyle(**brand_style) if brand_style else None
+
         # Generate video
-        video_bytes = await video_service.generate_video(video_config)
+        video_bytes = await video_service.generate_video(video_config, brand_style_obj)
         logger.info(f"[ADK Tool] Generated video ({len(video_bytes)} bytes) for event {event_id}")
 
         # Check size and create warning if needed

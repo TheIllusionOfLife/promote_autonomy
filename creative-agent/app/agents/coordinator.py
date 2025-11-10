@@ -31,11 +31,12 @@ def create_copy_agent():
 
 Your responsibilities:
 - Generate engaging, on-brand captions that match the requested style
+- Apply brand style guidelines (tone, colors, tagline) consistently when provided
 - Ensure captions are concise and platform-appropriate
 - Use the generate_captions_tool to create captions
 - Return the result with the captions_url
 
-Always call the generate_captions_tool to generate captions.""",
+Always call the generate_captions_tool with all parameters including brand_style if available.""",
         description="Generates social media captions using Gemini",
         tools=[generate_captions_tool],
     )
@@ -56,11 +57,12 @@ def create_image_agent():
 
 Your responsibilities:
 - Generate images that match the requested prompt, size, and aspect ratio
+- Apply brand style guidelines (tone, colors, tagline) consistently when provided
 - Ensure images are high quality and platform-appropriate
 - Use the generate_image_tool to create images
 - Return the result with the image_url
 
-Always call the generate_image_tool to generate images.""",
+Always call the generate_image_tool with all parameters including brand_style if available.""",
         description="Generates promotional images using Imagen",
         tools=[generate_image_tool],
     )
@@ -81,11 +83,12 @@ def create_video_agent():
 
 Your responsibilities:
 - Generate videos that match the requested prompt, duration, and aspect ratio
+- Apply brand style guidelines (tone, colors, tagline) consistently when provided
 - Ensure videos are high quality and platform-appropriate
 - Use the generate_video_tool to create videos
 - Return the result with the video_url and any warnings
 
-Always call the generate_video_tool to generate videos.""",
+Always call the generate_video_tool with all parameters including brand_style if available.""",
         description="Generates promotional videos using Veo",
         tools=[generate_video_tool],
     )
@@ -121,9 +124,11 @@ Your job is to delegate tasks to specialized agents based on the task list provi
 Important instructions:
 1. Delegate ALL tasks in parallel for efficiency (not sequentially)
 2. Each agent is independent and can work simultaneously
-3. Collect all results and return them in a structured format
-4. If any agent fails or returns an error, continue with others and report the error
-5. Return results in JSON format with keys: captions_url, image_url, video_url
+3. Pass brand style guidelines to all agents when provided (tone, colors, tagline)
+4. Ensure brand consistency across all generated assets
+5. Collect all results and return them in a structured format
+6. If any agent fails or returns an error, continue with others and report the error
+7. Return results in JSON format with keys: captions_url, image_url, video_url
 
 Example output format:
 {

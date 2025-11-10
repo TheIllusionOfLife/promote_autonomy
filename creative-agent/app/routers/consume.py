@@ -144,6 +144,7 @@ async def _generate_assets_with_adk(
     event_id: str,
     task_list: TaskList,
     firestore_service: "FirestoreService",
+    storage_service: "StorageService",
 ) -> dict[str, str]:
     """Generate assets using ADK multi-agent orchestration.
 
@@ -151,6 +152,7 @@ async def _generate_assets_with_adk(
         event_id: Job identifier
         task_list: Task configuration
         firestore_service: Firestore service for storing warnings
+        storage_service: Storage service for reference image cleanup
 
     Returns:
         Dict with keys: captions_url, image_url, video_url (as available)
@@ -187,13 +189,25 @@ async def _generate_assets_with_adk(
             f"(duration: {task_list.video.duration_sec}s, aspect_ratio: {task_list.video.aspect_ratio})"
         )
 
+    # Build brand context if available
+    brand_context = ""
+    if task_list.brand_style:
+        brand_context = f"""
+Brand Style Guidelines:
+- Tone: {task_list.brand_style.tone}
+- Colors: {', '.join(f"{c.name} (#{c.hex_code})" for c in task_list.brand_style.colors[:3])}
+- Tagline: {task_list.brand_style.tagline or "N/A"}
+
+IMPORTANT: Apply brand style consistently across all assets.
+"""
+
     # Create prompt for coordinator
     prompt = f"""Generate creative assets for this marketing campaign:
 
 Goal: {task_list.goal}
 Target Platforms: {', '.join(p.value for p in task_list.target_platforms)}
 Event ID: {event_id}
-
+{brand_context}
 Tasks to complete:
 {chr(10).join(tasks_description)}
 
@@ -337,6 +351,15 @@ Return results in JSON format with URLs for all generated assets:
                 except Exception as e:
                     logger.error(f"[ADK] Failed to store warning for job {event_id}: {e}")
 
+        # Delete reference image after successful completion
+        if task_list.reference_image_url:
+            try:
+                await storage_service.delete_reference_image(event_id)
+                logger.info(f"[ADK] Deleted reference image for job {event_id}")
+            except Exception as e:
+                # Log error but don't fail the job
+                logger.warning(f"[ADK] Failed to delete reference image for job {event_id}: {e}")
+
         logger.info(f"[ADK] Asset generation completed for job {event_id}: {list(outputs.keys())}")
         return outputs
 
@@ -378,7 +401,9 @@ async def _generate_assets_legacy(
             return None
 
         logger.info(f"[LEGACY] Generating captions for job {event_id}")
-        captions = await copy_service.generate_captions(task_list.captions, task_list.goal)
+        captions = await copy_service.generate_captions(
+            task_list.captions, task_list.goal, task_list.brand_style
+        )
         captions_json = json.dumps(captions, indent=2).encode("utf-8")
         url = await storage_service.upload_file(
             event_id=event_id,
@@ -395,7 +420,9 @@ async def _generate_assets_legacy(
             return None
 
         logger.info(f"[LEGACY] Generating image for job {event_id}")
-        image_bytes = await image_service.generate_image(task_list.image)
+        image_bytes = await image_service.generate_image(
+            task_list.image, task_list.brand_style
+        )
 
         # Determine format based on compression
         if task_list.image.max_file_size_mb:
@@ -420,7 +447,9 @@ async def _generate_assets_legacy(
             return None
 
         logger.info(f"[LEGACY] Generating video for job {event_id}")
-        video_bytes = await video_service.generate_video(task_list.video)
+        video_bytes = await video_service.generate_video(
+            task_list.video, task_list.brand_style
+        )
 
         # Check if video exceeds size limit and store warning
         if task_list.video.max_file_size_mb:
@@ -454,6 +483,15 @@ async def _generate_assets_legacy(
         generate_video_task(),
     )
     logger.info(f"[LEGACY] All assets generated for job {event_id}")
+
+    # Delete reference image after successful completion
+    if task_list.reference_image_url:
+        try:
+            await storage_service.delete_reference_image(event_id)
+            logger.info(f"[LEGACY] Deleted reference image for job {event_id}")
+        except Exception as e:
+            # Log error but don't fail the job
+            logger.warning(f"[LEGACY] Failed to delete reference image for job {event_id}: {e}")
 
     # Build outputs dict
     outputs = {}
@@ -562,6 +600,7 @@ async def consume_task(
                     event_id=event_id,
                     task_list=task_list,
                     firestore_service=firestore_service,
+                    storage_service=storage_service,
                 )
             else:
                 logger.info(f"[LEGACY] Using legacy orchestration for job {event_id}")

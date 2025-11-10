@@ -43,6 +43,12 @@ class MockFirestoreService:
     async def create_job(self, event_id: str, uid: str, task_list: TaskList) -> Job:
         """Create a new job in memory."""
         now = datetime.now(timezone.utc).isoformat()
+
+        # Extract reference image URL from task list if present
+        reference_images = []
+        if hasattr(task_list, "reference_image_url") and task_list.reference_image_url:
+            reference_images = [task_list.reference_image_url]
+
         job = Job(
             event_id=event_id,
             uid=uid,
@@ -50,6 +56,7 @@ class MockFirestoreService:
             task_list=task_list,
             created_at=now,
             updated_at=now,
+            reference_images=reference_images,
         )
         self.jobs[event_id] = job
         logger.info(f"[MOCK] Created job {event_id} with status pending_approval")
@@ -141,6 +148,12 @@ class RealFirestoreService:
     async def create_job(self, event_id: str, uid: str, task_list: TaskList) -> Job:
         """Create a new job in Firestore."""
         now = datetime.now(timezone.utc).isoformat()
+
+        # Extract reference image URL from task list if present
+        reference_images = []
+        if hasattr(task_list, "reference_image_url") and task_list.reference_image_url:
+            reference_images = [task_list.reference_image_url]
+
         job = Job(
             event_id=event_id,
             uid=uid,
@@ -148,6 +161,7 @@ class RealFirestoreService:
             task_list=task_list,
             created_at=now,
             updated_at=now,
+            reference_images=reference_images,
         )
 
         doc_ref = self.db.collection("jobs").document(event_id)

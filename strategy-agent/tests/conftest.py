@@ -17,6 +17,7 @@ def setup_test_env():
     os.environ["USE_MOCK_GEMINI"] = "true"
     os.environ["USE_MOCK_FIRESTORE"] = "true"
     os.environ["USE_MOCK_PUBSUB"] = "true"
+    os.environ["USE_MOCK_STORAGE"] = "true"
     os.environ["PORT"] = "8000"
     os.environ["LOG_LEVEL"] = "INFO"
 
