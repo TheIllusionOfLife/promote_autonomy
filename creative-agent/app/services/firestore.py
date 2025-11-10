@@ -165,6 +165,11 @@ class RealFirestoreService:
 
         doc_ref = self.db.collection("jobs").document(event_id)
 
+        # Check if document exists before updating (prevents race condition)
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise ValueError(f"Job {event_id} not found")
+
         # Build update data
         update_data = {
             "warnings": ArrayUnion([warning_message]),
