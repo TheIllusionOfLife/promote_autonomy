@@ -57,27 +57,24 @@ class MockStorageService:
         self.files[key] = content
         return f"https://storage.googleapis.com/mock-bucket/{key}"
 
-    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+    async def upload_reference_image(
+        self, event_id: str, content: bytes, content_type: str
+    ) -> str:
         """Upload reference image to mock storage.
 
         Args:
             event_id: Event ID for organizing files
-            file: Uploaded file with content_type
+            content: Image file content (already read)
+            content_type: MIME type (image/jpeg or image/png)
 
         Returns:
             Mock public URL
         """
         # Detect file extension from content type
-        ext = ".jpg"
-        if file.content_type == "image/png":
-            ext = ".png"
-        elif file.content_type == "image/jpeg":
-            ext = ".jpg"
-
+        ext = ".png" if content_type == "image/png" else ".jpg"
         filename = f"reference_image{ext}"
-        content = await file.read()
 
-        return await self.upload_file(event_id, filename, content, file.content_type)
+        return await self.upload_file(event_id, filename, content, content_type)
 
     async def delete_reference_image(self, event_id: str) -> None:
         """Delete reference image from mock storage.
@@ -143,27 +140,24 @@ class RealStorageService:
 
         return blob.public_url
 
-    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+    async def upload_reference_image(
+        self, event_id: str, content: bytes, content_type: str
+    ) -> str:
         """Upload reference product image to Cloud Storage.
 
         Args:
             event_id: Event ID for organizing files
-            file: Uploaded file
+            content: Image file content (already read)
+            content_type: MIME type (image/jpeg or image/png)
 
         Returns:
             Public URL of uploaded image
         """
         # Detect file extension from content type
-        ext = ".jpg"
-        if file.content_type == "image/png":
-            ext = ".png"
-        elif file.content_type == "image/jpeg":
-            ext = ".jpg"
-
+        ext = ".png" if content_type == "image/png" else ".jpg"
         filename = f"reference_image{ext}"
-        content = await file.read()
 
-        return await self.upload_file(event_id, filename, content, file.content_type)
+        return await self.upload_file(event_id, filename, content, content_type)
 
     async def delete_reference_image(self, event_id: str) -> None:
         """Delete reference image from Cloud Storage.

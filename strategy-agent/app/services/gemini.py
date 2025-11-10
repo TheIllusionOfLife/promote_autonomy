@@ -57,7 +57,9 @@ class GeminiService(Protocol):
 class MockGeminiService:
     """Mock implementation for development without real API."""
 
-    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+    async def analyze_reference_image(
+        self, image_url: str, goal: str, mime_type: str = "image/jpeg"
+    ) -> str:
         """Generate mock analysis of reference image."""
         logger.info(f"[MOCK] Analyzing reference image: {image_url} for goal: {goal}")
 
@@ -193,12 +195,15 @@ class RealGeminiService:
             logger.error(f"Failed to initialize Gemini: {e}")
             raise
 
-    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+    async def analyze_reference_image(
+        self, image_url: str, goal: str, mime_type: str = "image/jpeg"
+    ) -> str:
         """Analyze reference product image using Gemini vision capabilities.
 
         Args:
             image_url: Public URL to the reference image
             goal: Marketing goal for context
+            mime_type: MIME type of image (image/jpeg or image/png)
 
         Returns:
             Detailed text analysis of the product image
@@ -220,8 +225,8 @@ Please provide a comprehensive analysis including:
 Provide this analysis in a detailed, structured format (200-400 words) that can inform the creation of marketing captions and visual assets."""
 
         try:
-            # Create image part from URL
-            image_part = Part.from_uri(image_url, mime_type="image/jpeg")
+            # Create image part from URL with correct MIME type
+            image_part = Part.from_uri(image_url, mime_type=mime_type)
 
             # Generate analysis with timeout
             response = await asyncio.wait_for(

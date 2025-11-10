@@ -106,7 +106,14 @@ async def strategize(
     # Parse target_platforms from JSON string
     try:
         platforms_list = json.loads(target_platforms)
+        if not platforms_list:
+            raise HTTPException(
+                status_code=400,
+                detail="target_platforms must contain at least one platform",
+            )
         platforms = [Platform(p) for p in platforms_list]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -158,7 +165,7 @@ async def strategize(
                     detail="Reference image must be JPEG or PNG",
                 )
 
-            # Validate file size (max 10MB)
+            # Read and validate file size (max 10MB)
             content = await reference_image.read()
             if len(content) > 10 * 1024 * 1024:
                 raise HTTPException(
@@ -166,26 +173,51 @@ async def strategize(
                     detail="Reference image must be less than 10MB",
                 )
 
-            # Reset file pointer and upload
-            await reference_image.seek(0)
+            # Upload using already-read content (avoid double-read)
             storage_service = get_storage_service()
-            reference_url = await storage_service.upload_reference_image(event_id, reference_image)
+            reference_url = await storage_service.upload_reference_image(
+                event_id=event_id,
+                content=content,
+                content_type=reference_image.content_type,
+            )
 
             logger.info(f"Uploaded reference image to {reference_url}")
 
-            # Analyze image with Gemini vision
-            gemini_service = get_gemini_service()
-            reference_analysis = await gemini_service.analyze_reference_image(reference_url, goal)
+            try:
+                # Analyze image with Gemini vision (pass actual MIME type)
+                gemini_service = get_gemini_service()
+                reference_analysis = await gemini_service.analyze_reference_image(
+                    reference_url, goal, reference_image.content_type
+                )
 
-            logger.info(f"Generated image analysis: {reference_analysis[:100]}...")
+                logger.info(f"Generated image analysis: {reference_analysis[:100]}...")
+            except Exception as analysis_error:
+                # Clean up uploaded image if analysis fails
+                logger.warning(f"Gemini vision analysis failed, cleaning up: {analysis_error}")
+                try:
+                    await storage_service.delete_reference_image(event_id)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to clean up reference image: {cleanup_error}")
+                # Re-raise the original error
+                raise
 
         # Generate task list via Gemini (with optional reference analysis)
         gemini_service = get_gemini_service()
-        task_list = await gemini_service.generate_task_list(
-            goal,
-            platforms,
-            reference_analysis=reference_analysis
-        )
+        try:
+            task_list = await gemini_service.generate_task_list(
+                goal,
+                platforms,
+                reference_analysis=reference_analysis
+            )
+        except Exception as task_list_error:
+            # Clean up uploaded image if task list generation fails
+            if reference_url:
+                logger.warning(f"Task list generation failed, cleaning up reference image: {task_list_error}")
+                try:
+                    await storage_service.delete_reference_image(event_id)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to clean up reference image: {cleanup_error}")
+            raise
 
         # Add reference_image_url to task_list if provided
         if reference_url:

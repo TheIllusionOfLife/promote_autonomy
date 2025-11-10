@@ -19,12 +19,11 @@ class TestMockStorageService:
         """Test uploading reference image."""
         service = MockStorageService()
 
-        # Mock UploadFile
-        mock_file = Mock()
-        mock_file.content_type = "image/jpeg"
-        mock_file.read = AsyncMock(return_value=b"fake image data")
+        # Upload with content and content_type
+        content = b"fake image data"
+        content_type = "image/jpeg"
 
-        url = await service.upload_reference_image("event123", mock_file)
+        url = await service.upload_reference_image("event123", content, content_type)
 
         assert url.startswith("https://storage.googleapis.com/mock-bucket/event123/reference_image")
         assert url.endswith(".jpg")
@@ -35,11 +34,10 @@ class TestMockStorageService:
         """Test uploading reference image as PNG."""
         service = MockStorageService()
 
-        mock_file = Mock()
-        mock_file.content_type = "image/png"
-        mock_file.read = AsyncMock(return_value=b"fake png data")
+        content = b"fake png data"
+        content_type = "image/png"
 
-        url = await service.upload_reference_image("event456", mock_file)
+        url = await service.upload_reference_image("event456", content, content_type)
 
         assert url.endswith(".png")
         assert "event456/reference_image.png" in service.files
@@ -50,10 +48,9 @@ class TestMockStorageService:
         service = MockStorageService()
 
         # Upload first
-        mock_file = Mock()
-        mock_file.content_type = "image/jpeg"
-        mock_file.read = AsyncMock(return_value=b"fake data")
-        await service.upload_reference_image("event789", mock_file)
+        content = b"fake data"
+        content_type = "image/jpeg"
+        await service.upload_reference_image("event789", content, content_type)
 
         # Verify it exists
         assert "event789/reference_image.jpg" in service.files
@@ -107,12 +104,11 @@ class TestRealStorageService:
 
             service = RealStorageService()
 
-            # Mock UploadFile
-            mock_file = Mock()
-            mock_file.content_type = "image/jpeg"
-            mock_file.read = AsyncMock(return_value=b"real image data")
+            # Upload with content and content_type
+            content = b"real image data"
+            content_type = "image/jpeg"
 
-            url = await service.upload_reference_image("event123", mock_file)
+            url = await service.upload_reference_image("event123", content, content_type)
 
             # Verify blob path
             mock_bucket.blob.assert_called_once_with("event123/reference_image.jpg")
@@ -194,11 +190,10 @@ class TestRealStorageService:
             service = RealStorageService()
 
             # Test PNG
-            mock_file = Mock()
-            mock_file.content_type = "image/png"
-            mock_file.read = AsyncMock(return_value=b"png data")
+            content = b"png data"
+            content_type = "image/png"
 
-            url = await service.upload_reference_image("event123", mock_file)
+            url = await service.upload_reference_image("event123", content, content_type)
 
             # Verify correct extension
             mock_bucket.blob.assert_called_with("event123/reference_image.png")
