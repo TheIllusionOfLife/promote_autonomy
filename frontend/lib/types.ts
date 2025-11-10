@@ -137,6 +137,7 @@ export interface Job {
   images: string[];
   videos: string[];
   audit_logs: string[];
+  warnings?: string[];
 }
 
 export interface StrategizeRequest {
@@ -149,6 +150,8 @@ export interface StrategizeResponse {
   event_id: string;
   status: JobStatus;
   task_list: TaskList;
+  message: string;
+  warnings?: string[];
 }
 
 export interface ApproveRequest {
