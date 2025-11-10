@@ -23,12 +23,15 @@ class StorageService(Protocol):
         """
         ...
 
-    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+    async def upload_reference_image(
+        self, event_id: str, content: bytes, content_type: str
+    ) -> str:
         """Upload reference product image.
 
         Args:
             event_id: Event ID for organizing files
-            file: Uploaded file
+            content: Image file content (already read)
+            content_type: MIME type (image/jpeg or image/png)
 
         Returns:
             Public URL of uploaded image

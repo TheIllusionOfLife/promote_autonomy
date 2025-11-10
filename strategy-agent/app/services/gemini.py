@@ -23,12 +23,15 @@ logger = logging.getLogger(__name__)
 class GeminiService(Protocol):
     """Protocol for Gemini service implementations."""
 
-    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+    async def analyze_reference_image(
+        self, image_url: str, goal: str, mime_type: str = "image/jpeg"
+    ) -> str:
         """Analyze a reference product image for marketing purposes.
 
         Args:
             image_url: Public URL to the reference image
             goal: Marketing goal for context
+            mime_type: MIME type of image (image/jpeg or image/png)
 
         Returns:
             Detailed text analysis of the product image

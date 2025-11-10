@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, Form, File, UploadFile
 from firebase_admin import auth
 from ulid import ULID
 
+from app.core.config import get_settings
 from app.models.request import StrategizeRequest
 from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
@@ -165,12 +166,14 @@ async def strategize(
                     detail="Reference image must be JPEG or PNG",
                 )
 
-            # Read and validate file size (max 10MB)
+            # Read and validate file size
             content = await reference_image.read()
-            if len(content) > 10 * 1024 * 1024:
+            settings = get_settings()
+            max_size_bytes = settings.MAX_REFERENCE_IMAGE_SIZE_MB * 1024 * 1024
+            if len(content) > max_size_bytes:
                 raise HTTPException(
                     status_code=400,
-                    detail="Reference image must be less than 10MB",
+                    detail=f"Reference image must be less than {settings.MAX_REFERENCE_IMAGE_SIZE_MB}MB",
                 )
 
             # Upload using already-read content (avoid double-read)
@@ -251,6 +254,16 @@ async def strategize(
     except HTTPException:
         raise
     except Exception as e:
+        # Clean up uploaded image if any step fails
+        if reference_url:
+            logger.warning(f"Strategize failed, cleaning up reference image: {e}")
+            try:
+                storage_service = get_storage_service()
+                await storage_service.delete_reference_image(event_id)
+                logger.info(f"Cleaned up reference image for failed job {event_id}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to clean up reference image: {cleanup_error}")
+
         logger.error(f"Error in strategize endpoint: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,

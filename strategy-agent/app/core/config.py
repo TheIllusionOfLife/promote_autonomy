@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # Cloud Storage Configuration
     STORAGE_BUCKET: str = ""
+    MAX_REFERENCE_IMAGE_SIZE_MB: int = 10  # Maximum reference image upload size
 
     # Mock Mode Flags (for rapid development)
     USE_MOCK_GEMINI: bool = False
