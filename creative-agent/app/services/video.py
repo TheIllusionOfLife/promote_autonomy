@@ -93,6 +93,92 @@ class RealVeoVideoService:
         "technical": "precise, detailed style",
     }
 
+    # HSV color classification thresholds
+    SATURATION_ACHROMATIC_THRESHOLD = 0.15  # Below this is grayscale
+    VALUE_BLACK_THRESHOLD = 0.2  # Below this is black
+    VALUE_WHITE_THRESHOLD = 0.8  # Above this is white
+
+    @staticmethod
+    def _hex_to_color_name(hex_code: str) -> str:
+        """Convert hex code to approximate color name using HSV color model.
+
+        Args:
+            hex_code: 6-character hex code (e.g., '4D18C9', 'FF0000')
+
+        Returns:
+            Approximate color name (e.g., 'purple', 'red', 'blue')
+
+        Raises:
+            ValueError: If hex_code is invalid (wrong length or non-hex characters)
+        """
+        # Strip leading '#' if present and validate
+        hex_code = hex_code.lstrip('#')
+
+        if len(hex_code) != 6:
+            raise ValueError(
+                f"Invalid hex code length: {len(hex_code)}. Expected 6 characters (e.g., 'FF0000')."
+            )
+
+        # Validate hex characters and convert to RGB (0-1 range)
+        try:
+            r = int(hex_code[0:2], 16) / 255.0
+            g = int(hex_code[2:4], 16) / 255.0
+            b = int(hex_code[4:6], 16) / 255.0
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid hex code '{hex_code}': contains non-hexadecimal characters. "
+                f"Expected format: 6 hex digits (0-9, A-F)."
+            ) from e
+
+        # Convert RGB to HSV
+        max_val = max(r, g, b)
+        min_val = min(r, g, b)
+        delta = max_val - min_val
+
+        # Value (brightness)
+        v = max_val
+
+        # Saturation
+        s = 0 if max_val == 0 else delta / max_val
+
+        # Hue (0-360 degrees)
+        if delta == 0:
+            h = 0.0  # Achromatic (gray)
+        elif max_val == r:
+            h = 60.0 * (((g - b) / delta) % 6)
+        elif max_val == g:
+            h = 60.0 * (((b - r) / delta) + 2)
+        else:  # max_val == b
+            h = 60.0 * (((r - g) / delta) + 4)
+
+        # Classify color based on HSV values
+        # Check for achromatic colors (low saturation)
+        if s < RealVeoVideoService.SATURATION_ACHROMATIC_THRESHOLD:
+            if v < RealVeoVideoService.VALUE_BLACK_THRESHOLD:
+                return "black"
+            elif v > RealVeoVideoService.VALUE_WHITE_THRESHOLD:
+                return "white"
+            else:
+                return "gray"
+
+        # Chromatic colors based on hue
+        if h < 15 or h >= 345:
+            return "red"
+        elif h < 45:
+            return "orange"
+        elif h < 75:
+            return "yellow"
+        elif h < 150:
+            return "green"
+        elif h < 195:
+            return "cyan"
+        elif h < 255:
+            return "blue"
+        elif h < 285:
+            return "purple"
+        else:  # 285-345
+            return "pink"
+
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
         settings = get_settings()
@@ -163,9 +249,11 @@ class RealVeoVideoService:
                     (c for c in brand_style.colors if c.usage == "primary"),
                     brand_style.colors[0]
                 )
-                # Natural color description without hex codes (VEO interprets literally)
-                color_name = primary_color.name if primary_color.name else "the brand color"
-                enhanced_prompt += f" Incorporate {color_name} as a prominent visual accent throughout."
+                # Use hex_code as source of truth, name is just a label
+                # Convert hex to approximate color name for natural language prompts
+                natural_color_name = self._hex_to_color_name(primary_color.hex_code)
+                color_description = f"{primary_color.name} ({natural_color_name})" if primary_color.name else natural_color_name
+                enhanced_prompt += f" Incorporate {color_description} tones as a prominent visual accent throughout."
 
         # Validate prompt length to prevent abuse and API errors
         MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts

@@ -333,15 +333,24 @@ export default function Home() {
                 fontSize: '0.9rem'
               }}>
                 <strong>Selected Platforms ({selectedPlatforms.length}):</strong>
+                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#666', marginBottom: '0.75rem' }}>
+                  📝 AI will generate captions + image and/or video based on your goal
+                </div>
                 <div style={{ marginTop: '0.5rem' }}>
                   {selectedPlatforms.map(platform => {
                     const spec = PLATFORM_SPECS[platform];
                     return (
-                      <div key={platform} style={{ marginBottom: '0.5rem', paddingLeft: '1rem' }}>
-                        <strong>{platformLabels[platform]}:</strong>{' '}
-                        Image {spec.image_aspect_ratio} ({spec.image_size}),
-                        Video {spec.video_aspect_ratio} (max {spec.max_video_length_sec}s),
-                        Captions max {spec.caption_max_length} chars
+                      <div key={platform} style={{ marginBottom: '0.75rem', paddingLeft: '1rem', borderLeft: '3px solid #0070f3', paddingTop: '0.25rem', paddingBottom: '0.25rem' }}>
+                        <strong>{platformLabels[platform]}:</strong>
+                        <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', color: '#555' }}>
+                          📸 Image: {spec.image_aspect_ratio} ({spec.image_size}, max {spec.max_image_size_mb}MB)
+                        </div>
+                        <div style={{ fontSize: '0.85rem', marginTop: '0.15rem', color: '#555' }}>
+                          🎥 Video: {spec.video_aspect_ratio} (max {spec.max_video_length_sec}s, max {spec.max_video_size_mb}MB)
+                        </div>
+                        <div style={{ fontSize: '0.85rem', marginTop: '0.15rem', color: '#555' }}>
+                          ✍️ Captions: max {spec.caption_max_length} characters
+                        </div>
                       </div>
                     );
                   })}
@@ -497,7 +506,20 @@ export default function Home() {
         </form>
       ) : (
         <div>
-          <h2>Job Status: {currentJob.status}</h2>
+          <div style={{
+            padding: '1rem',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            background: currentJob.status === 'completed' ? '#10b981' : currentJob.status === 'failed' ? '#ef4444' : '#3b82f6',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '1.25rem',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Job Status: {currentJob.status}
+          </div>
           <div style={{
             background: 'white',
             padding: '1.5rem',

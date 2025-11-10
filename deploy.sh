@@ -122,7 +122,7 @@ fi
 
 # Grant roles to Strategy Agent SA
 echo "  Granting IAM roles to Strategy Agent SA..."
-for role in roles/datastore.user roles/pubsub.publisher roles/aiplatform.user; do
+for role in roles/datastore.user roles/pubsub.publisher roles/aiplatform.user roles/storage.objectCreator; do
     gcloud projects add-iam-policy-binding $PROJECT_ID \
         --member="serviceAccount:$SA_STRATEGY" \
         --role="$role" \
