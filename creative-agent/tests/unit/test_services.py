@@ -419,3 +419,30 @@ class TestMockStorageService:
 
         assert url1 != url2
         assert len(service.files) == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_reference_image(self):
+        """Test deleting reference image."""
+        service = MockStorageService()
+
+        # Upload reference images with different extensions
+        service.files["event-123/reference_image.jpg"] = b"jpg data"
+        service.files["event-123/reference_image.png"] = b"png data"
+        service.files["event-123/other_file.txt"] = b"should not be deleted"
+
+        await service.delete_reference_image("event-123")
+
+        # Verify reference images deleted
+        assert "event-123/reference_image.jpg" not in service.files
+        assert "event-123/reference_image.png" not in service.files
+
+        # Verify other files not deleted
+        assert "event-123/other_file.txt" in service.files
+
+    @pytest.mark.asyncio
+    async def test_delete_reference_image_not_exists(self):
+        """Test deleting reference image that doesn't exist."""
+        service = MockStorageService()
+
+        # Should not raise exception
+        await service.delete_reference_image("nonexistent-event")

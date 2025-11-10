@@ -271,6 +271,20 @@ class TestImageTaskConfig:
         with pytest.raises(ValidationError, match="Invalid dimensions"):
             ImageTaskConfig(prompt="Test", size="0x0")
 
+    def test_image_config_with_reference_image_url(self):
+        """Test image config with reference image URL."""
+        config = ImageTaskConfig(
+            prompt="Product shot based on reference",
+            size="1080x1080",
+            reference_image_url="https://storage.googleapis.com/bucket/ref.jpg"
+        )
+        assert config.reference_image_url == "https://storage.googleapis.com/bucket/ref.jpg"
+
+    def test_image_config_without_reference_image_url(self):
+        """Test image config without reference image defaults to None."""
+        config = ImageTaskConfig(prompt="Regular image", size="1024x1024")
+        assert config.reference_image_url is None
+
 
 class TestVideoTaskConfig:
     """Tests for VideoTaskConfig model."""
@@ -438,6 +452,30 @@ class TestTaskList:
         assert json_data["captions"]["n"] == 2
         assert json_data["captions"]["style"] == "linkedin"
 
+    def test_task_list_with_reference_image_url(self):
+        """Test task list with reference image URL."""
+        task_list = TaskList(
+            goal="Product campaign with reference image",
+            target_platforms=[Platform.INSTAGRAM_FEED],
+            reference_image_url="https://storage.googleapis.com/bucket/product.jpg",
+            captions=CaptionTaskConfig(n=3),
+            image=ImageTaskConfig(
+                prompt="Product shot",
+                reference_image_url="https://storage.googleapis.com/bucket/product.jpg"
+            ),
+        )
+        assert task_list.reference_image_url == "https://storage.googleapis.com/bucket/product.jpg"
+        assert task_list.image.reference_image_url == "https://storage.googleapis.com/bucket/product.jpg"
+
+    def test_task_list_without_reference_image_url(self):
+        """Test task list without reference image defaults to None."""
+        task_list = TaskList(
+            goal="Regular campaign",
+            target_platforms=[Platform.TWITTER],
+            captions=CaptionTaskConfig(n=1),
+        )
+        assert task_list.reference_image_url is None
+
 
 class TestJobStatus:
     """Tests for JobStatus enum."""
@@ -591,6 +629,43 @@ class TestJob:
         )
         job2.status = JobStatus.FAILED
         assert job2.status == JobStatus.FAILED
+
+    def test_job_with_reference_images(self):
+        """Test job with reference images list."""
+        task_list = TaskList(
+            goal="Product campaign",
+            target_platforms=[Platform.FACEBOOK],
+            reference_image_url="https://storage.googleapis.com/bucket/ref.jpg",
+            captions=CaptionTaskConfig(n=1),
+        )
+        job = Job(
+            event_id="01JD4S3ABC",
+            uid="user123",
+            status=JobStatus.PENDING_APPROVAL,
+            task_list=task_list,
+            created_at="2025-11-08T10:00:00Z",
+            updated_at="2025-11-08T10:00:00Z",
+            reference_images=["https://storage.googleapis.com/bucket/ref.jpg"],
+        )
+        assert len(job.reference_images) == 1
+        assert job.reference_images[0] == "https://storage.googleapis.com/bucket/ref.jpg"
+
+    def test_job_without_reference_images(self):
+        """Test job without reference images defaults to empty list."""
+        task_list = TaskList(
+            goal="Regular campaign",
+            target_platforms=[Platform.LINKEDIN],
+            captions=CaptionTaskConfig(n=1),
+        )
+        job = Job(
+            event_id="01JD4S3ABC",
+            uid="user123",
+            status=JobStatus.PENDING_APPROVAL,
+            task_list=task_list,
+            created_at="2025-11-08T10:00:00Z",
+            updated_at="2025-11-08T10:00:00Z",
+        )
+        assert job.reference_images == []
 
 
 class TestBrandColor:

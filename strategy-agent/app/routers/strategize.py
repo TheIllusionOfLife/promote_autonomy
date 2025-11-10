@@ -2,15 +2,18 @@
 
 import logging
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Form, File, UploadFile
 from firebase_admin import auth
 from ulid import ULID
 
+from app.core.config import get_settings
 from app.models.request import StrategizeRequest
 from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
 from app.services.gemini import get_gemini_service
+from app.services.storage import get_storage_service
 from promote_autonomy_shared.schemas import JobStatus, Platform, PLATFORM_SPECS
+import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -77,20 +80,47 @@ def _detect_aspect_ratio_conflicts(platforms: list[Platform]) -> list[str]:
     },
 )
 async def strategize(
-    request: StrategizeRequest,
+    goal: str = Form(..., min_length=10, max_length=500),
+    target_platforms: str = Form(...),
+    uid: str = Form(...),
     authorization: str | None = Header(None),
+    reference_image: UploadFile | None = File(None),
 ):
     """
     Generate a marketing strategy from a high-level goal.
 
     This endpoint:
     1. Verifies Firebase ID token to authenticate the user
-    2. Uses Gemini AI to generate a structured task list
-    3. Creates a job in Firestore with status=pending_approval
-    4. Returns the event_id for the user to review and approve
+    2. Optionally uploads and analyzes reference product image
+    3. Uses Gemini AI to generate a structured task list
+    4. Creates a job in Firestore with status=pending_approval
+    5. Returns the event_id for the user to review and approve
 
     The job remains in pending_approval until the user calls /approve.
+
+    Args:
+        goal: Marketing goal (10-500 characters)
+        target_platforms: JSON array of platform strings
+        uid: User ID from Firebase Auth
+        reference_image: Optional product image (PNG/JPG, max 10MB)
     """
+    # Parse target_platforms from JSON string
+    try:
+        platforms_list = json.loads(target_platforms)
+        if not platforms_list:
+            raise HTTPException(
+                status_code=400,
+                detail="target_platforms must contain at least one platform",
+            )
+        platforms = [Platform(p) for p in platforms_list]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid target_platforms format: {str(e)}",
+        )
+
     # Verify Firebase ID token
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -110,35 +140,117 @@ async def strategize(
         )
 
     # Verify token UID matches request UID
-    if token_uid != request.uid:
+    if token_uid != uid:
         logger.warning(
-            f"UID mismatch: token={token_uid}, request={request.uid}"
+            f"UID mismatch: token={token_uid}, request={uid}"
         )
         raise HTTPException(
             status_code=403,
             detail="UID mismatch between token and request",
         )
 
+    # Initialize variables before try block to avoid UnboundLocalError in except handler
+    reference_url = None
+    reference_analysis = None
+
     try:
         # Generate unique event ID
         event_id = str(ULID())
-        logger.info(f"Processing strategize request for user {request.uid}")
+        logger.info(f"Processing strategize request for user {uid}")
 
-        # Generate task list via Gemini
+        # Get service instances once at the start
+        storage_service = get_storage_service()
         gemini_service = get_gemini_service()
-        task_list = await gemini_service.generate_task_list(
-            request.goal, request.target_platforms, request.brand_style
-        )
+
+        if reference_image:
+            # Validate file type
+            if reference_image.content_type not in ["image/jpeg", "image/png"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Reference image must be JPEG or PNG",
+                )
+
+            # Read and validate file size
+            content = await reference_image.read()
+            settings = get_settings()
+            max_size_bytes = settings.MAX_REFERENCE_IMAGE_SIZE_MB * 1024 * 1024
+            if len(content) > max_size_bytes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Reference image must be less than {settings.MAX_REFERENCE_IMAGE_SIZE_MB}MB",
+                )
+
+            # Validate actual file type using magic numbers (prevents Content-Type spoofing)
+            import imghdr
+            detected_type = imghdr.what(None, h=content[:32])
+            if detected_type not in ["jpeg", "png"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid image file. Detected type: {detected_type or 'unknown'}. Only JPEG and PNG images are supported.",
+                )
+
+            # Upload using already-read content (avoid double-read)
+            reference_url = await storage_service.upload_reference_image(
+                event_id=event_id,
+                content=content,
+                content_type=reference_image.content_type,
+            )
+
+            logger.info(f"Uploaded reference image to {reference_url}")
+
+            try:
+                # Analyze image with Gemini vision (pass actual MIME type)
+                reference_analysis = await gemini_service.analyze_reference_image(
+                    reference_url, goal, reference_image.content_type
+                )
+
+                logger.info(f"Generated image analysis: {reference_analysis[:100]}...")
+            except Exception as analysis_error:
+                # Clean up uploaded image if analysis fails
+                logger.warning(f"Gemini vision analysis failed, cleaning up: {analysis_error}")
+                try:
+                    await storage_service.delete_reference_image(event_id)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to clean up reference image: {cleanup_error}")
+                # Re-raise the original error
+                raise
+
+        # Generate task list via Gemini (with optional reference analysis and brand style)
+        try:
+            task_list = await gemini_service.generate_task_list(
+                goal,
+                platforms,
+                brand_style=brand_style,
+                reference_analysis=reference_analysis
+            )
+        except Exception as task_list_error:
+            # Clean up uploaded image if task list generation fails
+            if reference_url:
+                logger.warning(f"Task list generation failed, cleaning up reference image: {task_list_error}")
+                try:
+                    await storage_service.delete_reference_image(event_id)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to clean up reference image: {cleanup_error}")
+            raise
+
+        # Add reference_image_url to task_list if provided
+        if reference_url:
+            task_list.reference_image_url = reference_url
+            # Also add to image task config if present
+            if task_list.image:
+                task_list.image.reference_image_url = reference_url
 
         # Detect aspect ratio conflicts
-        warnings = _detect_aspect_ratio_conflicts(request.target_platforms)
+        warnings = _detect_aspect_ratio_conflicts(platforms)
 
         # Create job in Firestore
         firestore_service = get_firestore_service()
-        job = await firestore_service.create_job(event_id, request.uid, task_list)
+        job = await firestore_service.create_job(event_id, uid, task_list)
+
+        # Note: reference_images will be populated during create_job from task_list.reference_image_url
 
         logger.info(
-            f"Created job {event_id} for user {request.uid} "
+            f"Created job {event_id} for user {uid} "
             f"with status {job.status}"
         )
 
@@ -150,7 +262,18 @@ async def strategize(
             warnings=warnings,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
+        # Clean up uploaded image if any step fails
+        if reference_url:
+            logger.warning(f"Strategize failed, cleaning up reference image: {e}")
+            try:
+                await storage_service.delete_reference_image(event_id)
+                logger.info(f"Cleaned up reference image for failed job {event_id}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to clean up reference image: {cleanup_error}")
+
         logger.error(f"Error in strategize endpoint: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
