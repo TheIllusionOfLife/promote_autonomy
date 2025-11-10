@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Form, File, UploadFile
 from firebase_admin import auth
 from ulid import ULID
 
@@ -10,7 +10,9 @@ from app.models.request import StrategizeRequest
 from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
 from app.services.gemini import get_gemini_service
+from app.services.storage import get_storage_service
 from promote_autonomy_shared.schemas import JobStatus, Platform, PLATFORM_SPECS
+import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -77,20 +79,40 @@ def _detect_aspect_ratio_conflicts(platforms: list[Platform]) -> list[str]:
     },
 )
 async def strategize(
-    request: StrategizeRequest,
+    goal: str = Form(..., min_length=10, max_length=500),
+    target_platforms: str = Form(...),
+    uid: str = Form(...),
     authorization: str | None = Header(None),
+    reference_image: UploadFile | None = File(None),
 ):
     """
     Generate a marketing strategy from a high-level goal.
 
     This endpoint:
     1. Verifies Firebase ID token to authenticate the user
-    2. Uses Gemini AI to generate a structured task list
-    3. Creates a job in Firestore with status=pending_approval
-    4. Returns the event_id for the user to review and approve
+    2. Optionally uploads and analyzes reference product image
+    3. Uses Gemini AI to generate a structured task list
+    4. Creates a job in Firestore with status=pending_approval
+    5. Returns the event_id for the user to review and approve
 
     The job remains in pending_approval until the user calls /approve.
+
+    Args:
+        goal: Marketing goal (10-500 characters)
+        target_platforms: JSON array of platform strings
+        uid: User ID from Firebase Auth
+        reference_image: Optional product image (PNG/JPG, max 10MB)
     """
+    # Parse target_platforms from JSON string
+    try:
+        platforms_list = json.loads(target_platforms)
+        platforms = [Platform(p) for p in platforms_list]
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid target_platforms format: {str(e)}",
+        )
+
     # Verify Firebase ID token
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -110,9 +132,9 @@ async def strategize(
         )
 
     # Verify token UID matches request UID
-    if token_uid != request.uid:
+    if token_uid != uid:
         logger.warning(
-            f"UID mismatch: token={token_uid}, request={request.uid}"
+            f"UID mismatch: token={token_uid}, request={uid}"
         )
         raise HTTPException(
             status_code=403,
@@ -122,21 +144,67 @@ async def strategize(
     try:
         # Generate unique event ID
         event_id = str(ULID())
-        logger.info(f"Processing strategize request for user {request.uid}")
+        logger.info(f"Processing strategize request for user {uid}")
 
-        # Generate task list via Gemini
+        # Handle reference image upload and analysis
+        reference_url = None
+        reference_analysis = None
+
+        if reference_image:
+            # Validate file type
+            if reference_image.content_type not in ["image/jpeg", "image/png"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Reference image must be JPEG or PNG",
+                )
+
+            # Validate file size (max 10MB)
+            content = await reference_image.read()
+            if len(content) > 10 * 1024 * 1024:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Reference image must be less than 10MB",
+                )
+
+            # Reset file pointer and upload
+            await reference_image.seek(0)
+            storage_service = get_storage_service()
+            reference_url = await storage_service.upload_reference_image(event_id, reference_image)
+
+            logger.info(f"Uploaded reference image to {reference_url}")
+
+            # Analyze image with Gemini vision
+            gemini_service = get_gemini_service()
+            reference_analysis = await gemini_service.analyze_reference_image(reference_url, goal)
+
+            logger.info(f"Generated image analysis: {reference_analysis[:100]}...")
+
+        # Generate task list via Gemini (with optional reference analysis)
         gemini_service = get_gemini_service()
-        task_list = await gemini_service.generate_task_list(request.goal, request.target_platforms)
+        task_list = await gemini_service.generate_task_list(
+            goal,
+            platforms,
+            reference_analysis=reference_analysis
+        )
+
+        # Add reference_image_url to task_list if provided
+        if reference_url:
+            task_list.reference_image_url = reference_url
+            # Also add to image task config if present
+            if task_list.image:
+                task_list.image.reference_image_url = reference_url
 
         # Detect aspect ratio conflicts
-        warnings = _detect_aspect_ratio_conflicts(request.target_platforms)
+        warnings = _detect_aspect_ratio_conflicts(platforms)
 
         # Create job in Firestore
         firestore_service = get_firestore_service()
-        job = await firestore_service.create_job(event_id, request.uid, task_list)
+        job = await firestore_service.create_job(event_id, uid, task_list)
+
+        # Note: reference_images will be populated during create_job from task_list.reference_image_url
 
         logger.info(
-            f"Created job {event_id} for user {request.uid} "
+            f"Created job {event_id} for user {uid} "
             f"with status {job.status}"
         )
 
@@ -148,6 +216,8 @@ async def strategize(
             warnings=warnings,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in strategize endpoint: {e}", exc_info=True)
         raise HTTPException(
