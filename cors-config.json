@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://frontend-luwcxjaugq-an.a.run.app"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

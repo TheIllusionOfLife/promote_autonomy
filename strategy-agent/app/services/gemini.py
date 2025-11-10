@@ -333,7 +333,7 @@ Target Platforms: {platform_names}{reference_context}
 
 Platform Constraints:
 - Image: {image_size} ({image_aspect_ratio}), max {min_image_size_mb}MB
-- Video: {video_aspect_ratio}, max {min_video_duration}s, max {min_video_size_mb}MB
+- Video: {video_aspect_ratio}, max {min_video_duration}s, max {min_video_size_mb}MB (VEO 3.0 supports 4, 6, or 8 seconds only)
 - Captions: max {min_caption_length} characters each
 {brand_context}
 Generate a JSON object with this structure:
@@ -342,13 +342,14 @@ Generate a JSON object with this structure:
   "target_platforms": {[p.value for p in target_platforms]},
   "captions": {{"n": <1-10>, "style": "<engaging|twitter|linkedin>"}},
   "image": {{"prompt": "<image description>", "size": "{image_size}", "aspect_ratio": "{image_aspect_ratio}", "max_file_size_mb": {min_image_size_mb}}} or null,
-  "video": {{"prompt": "<video description>", "duration_sec": <5-{min_video_duration}>, "aspect_ratio": "{video_aspect_ratio}", "max_file_size_mb": {min_video_size_mb}}} or null
+  "video": {{"prompt": "<video description>", "duration_sec": <4, 6, or 8 only>, "aspect_ratio": "{video_aspect_ratio}", "max_file_size_mb": {min_video_size_mb}}} or null
 }}
 
 Rules:
 - Always include captions (1-10 captions)
 - Include image if goal mentions visuals or is substantial
 - Include video only if explicitly mentioned or goal is major campaign
+- Video duration_sec MUST be exactly 4, 6, or 8 (VEO 3.0 limitation)
 - Be specific and actionable in prompts
 - Ensure image/video specs match platform constraints above
 - Image and video prompts should reference brand colors when provided

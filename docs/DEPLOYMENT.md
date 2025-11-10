@@ -11,9 +11,9 @@
 
 | Service | URL | Status |
 |---------|-----|--------|
-| **Frontend** | https://frontend-909635873035.asia-northeast1.run.app | ✅ Live |
-| **Strategy Agent** | https://strategy-agent-909635873035.asia-northeast1.run.app | ✅ Live |
-| **Creative Agent** | https://creative-agent-909635873035.asia-northeast1.run.app | ✅ Live (Auth Required) |
+| **Frontend** | https://frontend-luwcxjaugq-an.a.run.app | ✅ Live |
+| **Strategy Agent** | https://strategy-agent-luwcxjaugq-an.a.run.app | ✅ Live |
+| **Creative Agent** | https://creative-agent-luwcxjaugq-an.a.run.app | ✅ Live (Auth Required) |
 
 ### Infrastructure
 
@@ -88,15 +88,15 @@
 
 ```bash
 # Strategy Agent
-curl https://strategy-agent-909635873035.asia-northeast1.run.app/health
+curl https://strategy-agent-luwcxjaugq-an.a.run.app/health
 # Returns: {"status": "healthy", "service": "strategy-agent", "mock_mode": {...}}
 
 # Creative Agent (requires auth, returns 403 as expected)
-curl https://creative-agent-909635873035.asia-northeast1.run.app/health
+curl https://creative-agent-luwcxjaugq-an.a.run.app/health
 # Returns: 403 Forbidden (correct - OIDC protected)
 
 # Frontend
-curl https://frontend-909635873035.asia-northeast1.run.app
+curl https://frontend-luwcxjaugq-an.a.run.app
 # Returns: HTML homepage
 ```
 
@@ -108,7 +108,7 @@ gcloud pubsub topics describe creative-tasks
 
 # Verify subscription
 gcloud pubsub subscriptions describe creative-agent-sub
-# Push endpoint: https://creative-agent-909635873035.asia-northeast1.run.app/api/consume
+# Push endpoint: https://creative-agent-luwcxjaugq-an.a.run.app/api/consume
 # OIDC auth: pubsub-invoker@promote-autonomy.iam.gserviceaccount.com
 ```
 
@@ -134,7 +134,7 @@ gs://promote-autonomy-assets/01K9MS28QZC6T8SK0DHXGZKPF2/
 - `LOCATION`: asia-northeast1
 - `GEMINI_MODEL`: gemini-2.5-flash
 - `PUBSUB_TOPIC`: creative-tasks
-- `FRONTEND_URL`: https://frontend-909635873035.asia-northeast1.run.app
+- `FRONTEND_URL`: https://frontend-luwcxjaugq-an.a.run.app
 - `GEMINI_TIMEOUT_SEC`: 120
 - `USE_MOCK_*`: all false (production mode)
 
@@ -152,7 +152,7 @@ gs://promote-autonomy-assets/01K9MS28QZC6T8SK0DHXGZKPF2/
 
 ### Frontend
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: promote-autonomy
-- `NEXT_PUBLIC_STRATEGY_AGENT_URL`: https://strategy-agent-909635873035.asia-northeast1.run.app
+- `NEXT_PUBLIC_STRATEGY_AGENT_URL`: https://strategy-agent-luwcxjaugq-an.a.run.app
 - Firebase config: properly configured
 
 ---
@@ -248,7 +248,7 @@ gcloud run services update strategy-agent \
 
 ## ✅ Hackathon Submission Checklist
 
-- ✅ Working "Try it Out" link: https://frontend-909635873035.asia-northeast1.run.app
+- ✅ Working "Try it Out" link: https://frontend-luwcxjaugq-an.a.run.app
 - ✅ Two distinct AI agents communicating via Pub/Sub
 - ✅ Deployed to Cloud Run (3 services)
 - ✅ Vertex AI integration (Gemini 2.5 Flash, Imagen 4.0)
