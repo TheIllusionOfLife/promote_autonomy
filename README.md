@@ -353,7 +353,7 @@ firebase deploy --only firestore:rules
 
 ## Project Status
 
-**Live Demo**: https://frontend-luwcxjaugq-an.a.run.app
+**Live Demo**: [https://frontend-909635873035.asia-northeast1.run.app/](https://frontend-909635873035.asia-northeast1.run.app/)
 
 **Current Status**:
 - ✅ **Code**: 100% complete (83/83 tests passing)
