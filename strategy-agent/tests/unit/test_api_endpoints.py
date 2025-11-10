@@ -1,7 +1,8 @@
 """Tests for API endpoints."""
 
 import pytest
-from promote_autonomy_shared.schemas import JobStatus
+from unittest.mock import patch
+from promote_autonomy_shared.schemas import JobStatus, Platform
 
 
 @pytest.mark.unit
@@ -256,3 +257,37 @@ class TestApproveEndpoint:
             json={"event_id": sample_event_id},
         )
         assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.unit
+class TestGeminiFallback:
+    """Tests for Gemini service fallback behavior."""
+
+    @pytest.mark.asyncio
+    async def test_gemini_fallback_includes_target_platforms(self):
+        """Test that Gemini fallback TaskList includes required target_platforms field.
+
+        This test verifies the fix for the critical bug where the fallback TaskList
+        was missing the target_platforms field, causing ValidationError on API failure.
+
+        Regression test for: https://github.com/TheIllusionOfLife/promote_autonomy/pull/10
+        """
+        from app.services.gemini import RealGeminiService
+
+        service = RealGeminiService()
+
+        # Mock the Gemini generate_content_async to raise an exception
+        with patch.object(service.model, 'generate_content_async', side_effect=Exception("Simulated API failure")):
+            platforms = [Platform.TWITTER, Platform.INSTAGRAM_FEED]
+            result = await service.generate_task_list(
+                goal="Test campaign for fallback validation",
+                target_platforms=platforms
+            )
+
+            # CRITICAL: Fallback must include target_platforms
+            assert result.target_platforms == platforms
+
+            # Fallback should have basic captions
+            assert result.captions is not None
+            assert result.captions.n == 3
+            assert result.captions.style == "engaging"
