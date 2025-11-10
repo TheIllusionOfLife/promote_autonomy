@@ -22,10 +22,14 @@ class Settings(BaseSettings):
     # Firebase Configuration
     FIREBASE_CREDENTIALS_PATH: str = ""
 
+    # Cloud Storage Configuration
+    STORAGE_BUCKET: str = ""
+
     # Mock Mode Flags (for rapid development)
     USE_MOCK_GEMINI: bool = False
     USE_MOCK_FIRESTORE: bool = False
     USE_MOCK_PUBSUB: bool = False
+    USE_MOCK_STORAGE: bool = False
 
     # Retry Configuration
     PUBSUB_RETRY_ATTEMPTS: int = 3

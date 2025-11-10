@@ -1,10 +1,9 @@
-"""Cloud Storage service for asset uploads."""
+"""Cloud Storage service for reference image uploads."""
 
-import datetime
 from typing import Protocol
+from fastapi import UploadFile
 
 from app.core.config import get_settings
-
 
 
 class StorageService(Protocol):
@@ -24,6 +23,26 @@ class StorageService(Protocol):
         """
         ...
 
+    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+        """Upload reference product image.
+
+        Args:
+            event_id: Event ID for organizing files
+            file: Uploaded file
+
+        Returns:
+            Public URL of uploaded image
+        """
+        ...
+
+    async def delete_reference_image(self, event_id: str) -> None:
+        """Delete reference image for an event.
+
+        Args:
+            event_id: Event ID whose reference image to delete
+        """
+        ...
+
 
 class MockStorageService:
     """Mock storage for testing."""
@@ -37,6 +56,28 @@ class MockStorageService:
         key = f"{event_id}/{filename}"
         self.files[key] = content
         return f"https://storage.googleapis.com/mock-bucket/{key}"
+
+    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+        """Upload reference image to mock storage.
+
+        Args:
+            event_id: Event ID for organizing files
+            file: Uploaded file with content_type
+
+        Returns:
+            Mock public URL
+        """
+        # Detect file extension from content type
+        ext = ".jpg"
+        if file.content_type == "image/png":
+            ext = ".png"
+        elif file.content_type == "image/jpeg":
+            ext = ".jpg"
+
+        filename = f"reference_image{ext}"
+        content = await file.read()
+
+        return await self.upload_file(event_id, filename, content, file.content_type)
 
     async def delete_reference_image(self, event_id: str) -> None:
         """Delete reference image from mock storage.
@@ -64,7 +105,6 @@ class RealStorageService:
         settings = get_settings()
 
         # Pass credentials directly to client instead of modifying environment
-        # This is thread-safe and doesn't interfere with other Google Cloud clients
         if settings.FIREBASE_CREDENTIALS_PATH:
             credentials = service_account.Credentials.from_service_account_file(
                 settings.FIREBASE_CREDENTIALS_PATH
@@ -85,8 +125,6 @@ class RealStorageService:
         SECURITY NOTE: This method makes uploaded files permanently publicly accessible.
         This is intentional for promotional marketing assets that are meant to be shared.
         All files in this bucket should be considered public content.
-
-        Alternative: Use signed URLs with expiration for time-limited access.
         """
         # Create blob path
         blob_name = f"{event_id}/{filename}"
@@ -96,19 +134,36 @@ class RealStorageService:
         blob.upload_from_string(content, content_type=content_type)
 
         # Make blob publicly readable
-        # This requires storage.objects.setIamPolicy permission
-        # Bucket must not have public access prevention enforced
         try:
             blob.make_public()
         except Exception as e:
-            # Log error but don't fail - file is uploaded even if public access fails
             import logging
             logging.error(f"Failed to make blob public: {e}. File uploaded but not publicly accessible.")
-            # Return the URL anyway - it may work if bucket-level permissions allow
             return blob.public_url
 
-        # Return public URL
         return blob.public_url
+
+    async def upload_reference_image(self, event_id: str, file: UploadFile) -> str:
+        """Upload reference product image to Cloud Storage.
+
+        Args:
+            event_id: Event ID for organizing files
+            file: Uploaded file
+
+        Returns:
+            Public URL of uploaded image
+        """
+        # Detect file extension from content type
+        ext = ".jpg"
+        if file.content_type == "image/png":
+            ext = ".png"
+        elif file.content_type == "image/jpeg":
+            ext = ".jpg"
+
+        filename = f"reference_image{ext}"
+        content = await file.read()
+
+        return await self.upload_file(event_id, filename, content, file.content_type)
 
     async def delete_reference_image(self, event_id: str) -> None:
         """Delete reference image from Cloud Storage.
