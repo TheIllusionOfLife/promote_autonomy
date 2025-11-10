@@ -89,6 +89,34 @@ PLATFORM_SPECS = {
 }
 ```
 
+### Multi-Modal Input (Product Photos)
+
+**NEW**: Upload product photos to generate visually consistent marketing assets.
+
+**How It Works**:
+1. **Image Upload**: Users upload a product image (PNG/JPEG, max 10MB) in the frontend
+2. **Gemini Vision Analysis**: Strategy Agent analyzes the image using Gemini 2.5 Flash:
+   - Product type and key features
+   - Brand elements (logos, colors, visual style)
+   - Composition, lighting, and mood
+   - Marketing-relevant insights (200-400 words)
+3. **Context Integration**: Analysis informs task list generation:
+   - Image prompts incorporate product colors, style, and brand elements
+   - Captions reference product features and visual identity
+   - Generated assets maintain visual consistency with reference image
+4. **Automatic Cleanup**: Reference images deleted after job completion to save storage costs
+
+**Example**:
+- Upload: Eco-friendly water bottle photo (green, outdoor setting)
+- Analysis: "...forest green color, bamboo cap, outdoor hiking scene, eco-friendly messaging..."
+- Generated Assets: Images show bottle in nature settings, captions emphasize sustainability
+
+**API Integration**: `POST /api/strategize` accepts `reference_image` as multipart/form-data field
+
+**Storage**: Reference images stored in Cloud Storage (`{event_id}/reference_image.{ext}`)
+
+**Cleanup**: Deleted automatically by Creative Agent after job completion (strategy-agent/app/routers/consume.py:226-234)
+
 ## Project Structure
 
 ```
