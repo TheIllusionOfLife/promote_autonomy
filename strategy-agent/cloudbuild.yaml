@@ -28,6 +28,8 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
+      - '--set-env-vars'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=job-approvals,FRONTEND_URL=https://frontend-$PROJECT_ID.$_DEPLOY_REGION.run.app'
 
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
