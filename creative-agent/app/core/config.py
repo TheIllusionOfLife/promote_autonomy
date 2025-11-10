@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -39,7 +40,12 @@ class Settings(BaseSettings):
 
     # ADK Integration Flags
     USE_ADK_ORCHESTRATION: bool = False  # Use ADK for agent orchestration (experimental)
-    ADK_ROLLOUT_PERCENTAGE: int = 0  # Percentage of jobs to use ADK orchestration (0-100)
+    ADK_ROLLOUT_PERCENTAGE: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Percentage of jobs to use ADK orchestration (0-100)"
+    )
 
     # Server Configuration
     PORT: int = 8001

@@ -30,13 +30,6 @@ if TYPE_CHECKING:
     from app.services.image import ImageService
     from app.services.video import VideoService
 
-# ADK imports
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
-
-from app.agents.coordinator import get_creative_coordinator
-
 logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
@@ -114,6 +107,12 @@ async def _generate_assets_with_adk(
     Returns:
         Dict with keys: captions_url, image_url, video_url (as available)
     """
+    # Lazy import ADK dependencies (only load when feature flag is enabled)
+    from google.adk.runners import Runner
+    from google.adk.sessions import InMemorySessionService
+    from google.genai import types
+    from app.agents.coordinator import get_creative_coordinator
+
     logger.info(f"[ADK] Starting asset generation for job {event_id}")
 
     # Get ADK coordinator
@@ -167,6 +166,11 @@ Return results in JSON format with URLs for all generated assets:
 
     try:
         # Run ADK coordinator using Runner API
+        # NOTE: We cannot use output_schema for structured responses because ADK has a
+        # limitation: agents with tools (like our coordinator) cannot use output_schema.
+        # See: https://github.com/google/adk-python/issues/701
+        # Therefore, we must parse text responses manually.
+
         session_service = InMemorySessionService()
         runner = Runner(
             agent=coordinator,
@@ -181,7 +185,10 @@ Return results in JSON format with URLs for all generated assets:
         )
 
         # Execute agent and collect response
-        # Note: runner.run() is synchronous, so wrap in thread
+        # Why asyncio.to_thread: runner.run() is synchronous and blocks the event loop.
+        # We wrap it in a thread to prevent blocking FastAPI's async event loop.
+        # The runner.run() returns an iterator of events that we process to extract
+        # the final response text from the LLM.
         def run_agent():
             events = runner.run(
                 user_id="creative-agent",
@@ -200,6 +207,12 @@ Return results in JSON format with URLs for all generated assets:
         logger.debug(f"[ADK] Raw result: {result}")
 
         # Parse result - try to extract URLs from text response
+        # Why multiple strategies: LLM output format is unpredictable. The agent may:
+        # - Return valid JSON with extra text before/after
+        # - Return JSON wrapped in markdown code blocks
+        # - Return malformed JSON
+        # We try progressively more lenient parsing strategies to maximize success rate.
+        # This is necessary because output_schema is not available when using tools.
         outputs = {}
 
         # Try multiple JSON extraction strategies

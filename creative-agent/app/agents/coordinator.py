@@ -1,6 +1,8 @@
 """ADK Multi-Agent Coordinator for creative asset generation."""
 
 import logging
+from functools import lru_cache
+
 from google.adk.agents import LlmAgent
 from promote_autonomy_shared.schemas import TaskList
 
@@ -23,7 +25,7 @@ def create_copy_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="copy_writer",
-        model="gemini-2.5-flash",
+        model=settings.GEMINI_MODEL,
         instruction="""You are a creative copywriter specialized in social media captions.
 
 Your responsibilities:
@@ -46,7 +48,7 @@ def create_image_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="image_creator",
-        model="gemini-2.5-flash",
+        model=settings.GEMINI_MODEL,
         instruction="""You are a visual designer specialized in promotional graphics.
 
 Your responsibilities:
@@ -69,7 +71,7 @@ def create_video_agent() -> LlmAgent:
     """
     return LlmAgent(
         name="video_producer",
-        model="gemini-2.5-flash",
+        model=settings.GEMINI_MODEL,
         instruction="""You are a video producer specialized in short-form promotional videos.
 
 Your responsibilities:
@@ -101,7 +103,7 @@ def create_creative_coordinator() -> LlmAgent:
 
     coordinator = LlmAgent(
         name="creative_director",
-        model="gemini-2.5-flash",
+        model=settings.GEMINI_MODEL,
         instruction="""You are a creative director coordinating asset generation for marketing campaigns.
 
 Your job is to delegate tasks to specialized agents based on the task list provided:
@@ -130,31 +132,20 @@ Example output format:
     return coordinator
 
 
-# Singleton instance management
-# NOTE: ADK agents are stateless - they don't store request-specific data.
-# The singleton pattern is safe because:
-# 1. LlmAgent instances only contain configuration (model, instructions, tools)
-# 2. Each run() call is independent with its own context
-# 3. No mutable state is shared between requests
-# 4. Thread-safety: ADK handles concurrent requests internally
-_creative_coordinator: LlmAgent | None = None
-
-
+@lru_cache(maxsize=1)
 def get_creative_coordinator() -> LlmAgent:
-    """Get or create the creative coordinator agent (singleton).
+    """Get or create the creative coordinator agent (singleton, thread-safe).
 
-    The coordinator is safe to share across requests because:
+    Uses @lru_cache for thread-safe singleton pattern. The coordinator is safe
+    to share across requests because:
     - ADK agents are stateless (no request-specific data stored)
-    - Each run() invocation is independent
+    - Each run() invocation is independent with its own context
     - Configuration (model, tools, instructions) is immutable
+    - lru_cache provides built-in thread safety via internal locks
 
     Returns:
-        LlmAgent coordinator instance
+        LlmAgent coordinator instance (cached after first call)
     """
-    global _creative_coordinator
-
-    if _creative_coordinator is None:
-        _creative_coordinator = create_creative_coordinator()
-        logger.info("[ADK] Created creative coordinator agent with 3 sub-agents")
-
-    return _creative_coordinator
+    coordinator = create_creative_coordinator()
+    logger.info("[ADK] Created creative coordinator agent with 3 sub-agents")
+    return coordinator
