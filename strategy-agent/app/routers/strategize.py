@@ -10,10 +10,60 @@ from app.models.request import StrategizeRequest
 from app.models.response import ErrorResponse, StrategizeResponse
 from app.services.firestore import get_firestore_service
 from app.services.gemini import get_gemini_service
-from promote_autonomy_shared.schemas import JobStatus
+from promote_autonomy_shared.schemas import JobStatus, Platform, PLATFORM_SPECS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _detect_aspect_ratio_conflicts(platforms: list[Platform]) -> list[str]:
+    """Detect aspect ratio conflicts between selected platforms.
+
+    Returns list of warning messages about incompatible aspect ratios.
+    """
+    if len(platforms) <= 1:
+        return []  # No conflicts possible with single platform
+
+    warnings = []
+    aspect_ratios = {p: PLATFORM_SPECS[p].image_aspect_ratio for p in platforms}
+
+    # Group platforms by aspect ratio category
+    portrait = []  # 9:16
+    square = []    # 1:1
+    landscape = []  # 16:9, 1.91:1
+
+    for platform, ratio in aspect_ratios.items():
+        if ratio == "9:16":
+            portrait.append(platform)
+        elif ratio == "1:1":
+            square.append(platform)
+        else:  # 16:9, 1.91:1, etc
+            landscape.append(platform)
+
+    # Check for conflicts between categories
+    used_categories = sum([len(portrait) > 0, len(square) > 0, len(landscape) > 0])
+
+    if used_categories > 1:
+        # Get the first platform (the one that will be used)
+        first_platform = platforms[0]
+        first_ratio = aspect_ratios[first_platform]
+
+        # List conflicting platforms
+        conflicting = [
+            f"{p.value} ({aspect_ratios[p]})"
+            for p in platforms[1:]
+            if aspect_ratios[p] != first_ratio
+        ]
+
+        if conflicting:
+            conflicting_str = ", ".join(conflicting)
+            warnings.append(
+                f"Selected platforms have conflicting aspect ratios. "
+                f"Assets will use {first_platform.value} format ({first_ratio}). "
+                f"Conflicting platforms: {conflicting_str}"
+            )
+
+    return warnings
 
 
 @router.post(
@@ -78,6 +128,9 @@ async def strategize(
         gemini_service = get_gemini_service()
         task_list = await gemini_service.generate_task_list(request.goal, request.target_platforms)
 
+        # Detect aspect ratio conflicts
+        warnings = _detect_aspect_ratio_conflicts(request.target_platforms)
+
         # Create job in Firestore
         firestore_service = get_firestore_service()
         job = await firestore_service.create_job(event_id, request.uid, task_list)
@@ -92,6 +145,7 @@ async def strategize(
             status=job.status,
             task_list=task_list,
             message="Strategy generated successfully. Please review and approve.",
+            warnings=warnings,
         )
 
     except Exception as e:
