@@ -280,6 +280,10 @@ class Job(BaseModel):
         default_factory=list,
         description="Optional approval audit trail",
     )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Warning messages about asset generation (e.g., file size limits exceeded)",
+    )
 
     model_config = {"json_schema_extra": {"example": {
         "event_id": "01JD4S3ABCXYZ",
@@ -295,4 +299,5 @@ class Job(BaseModel):
         "images": [],
         "videos": [],
         "audit_logs": [],
+        "warnings": [],
     }}}
