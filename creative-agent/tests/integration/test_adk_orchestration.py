@@ -129,8 +129,8 @@ class TestGenerateAssetsWithAdkParsing:
         mock_coordinator = MagicMock()
         mock_coordinator.run.return_value = '''
         {
-            "captions_url": "https://storage.googleapis.com/bucket/captions.json",
-            "image_url": "https://storage.googleapis.com/bucket/image.png"
+            "captions_url": "https://storage.googleapis.com/test-bucket/captions.json",
+            "image_url": "https://storage.googleapis.com/test-bucket/image.png"
         }
         '''
         # Patch where the function is imported in consume.py
@@ -155,9 +155,9 @@ class TestGenerateAssetsWithAdkParsing:
         result = await _generate_assets_with_adk("test_event", task_list, mock_firestore, mock_storage)
 
         assert "captions_url" in result
-        assert result["captions_url"] == "https://storage.googleapis.com/bucket/captions.json"
+        assert result["captions_url"] == "https://storage.googleapis.com/test-bucket/captions.json"
         assert "image_url" in result
-        assert result["image_url"] == "https://storage.googleapis.com/bucket/image.png"
+        assert result["image_url"] == "https://storage.googleapis.com/test-bucket/image.png"
 
     @pytest.mark.asyncio
     async def test_parses_multiline_json_response(self, mocker):
