@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from typing import Any, TYPE_CHECKING
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Header, Request
 from google.auth.transport import requests as google_requests
@@ -33,6 +34,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 settings = get_settings()
 router = APIRouter()
+
+
+class AdkOrchestrationError(Exception):
+    """Exception raised when ADK orchestration fails and should fallback to legacy."""
+
+    pass
 
 
 class PubSubMessage(BaseModel):
@@ -68,15 +75,52 @@ def should_use_adk(event_id: str) -> bool:
     return (hash_val % 100) < settings.ADK_ROLLOUT_PERCENTAGE
 
 
+def _validate_gcs_url(url: str) -> bool:
+    """Validate that a URL is a proper GCS URL from the expected bucket.
+
+    Args:
+        url: URL to validate
+
+    Returns:
+        True if URL is valid and from expected bucket, False otherwise
+    """
+    try:
+        parsed = urlparse(url)
+
+        # Verify it's HTTPS
+        if parsed.scheme != 'https':
+            logger.warning(f"URL is not HTTPS: {url}")
+            return False
+
+        # Verify it's from storage.googleapis.com
+        if not parsed.netloc.endswith('storage.googleapis.com'):
+            logger.warning(f"URL is not from storage.googleapis.com: {url}")
+            return False
+
+        # Verify path starts with expected bucket
+        expected_bucket = settings.STORAGE_BUCKET
+        if not parsed.path.startswith(f'/{expected_bucket}/'):
+            logger.warning(
+                f"URL not in expected GCS bucket '{expected_bucket}': {url}"
+            )
+            return False
+
+        return True
+
+    except Exception as e:
+        logger.warning(f"Failed to parse URL '{url}': {e}")
+        return False
+
+
 def _extract_url_from_text(text: str, asset_type: str) -> str | None:
-    """Extract Cloud Storage URL from ADK text response.
+    """Extract and validate Cloud Storage URL from ADK text response.
 
     Args:
         text: ADK agent response text
         asset_type: Type of asset (captions, image, video)
 
     Returns:
-        Extracted URL or None if not found
+        Extracted and validated URL or None if not found/invalid
     """
     # Look for patterns like "captions_url: https://..." or "captions_url": "https://..."
     patterns = [
@@ -87,7 +131,11 @@ def _extract_url_from_text(text: str, asset_type: str) -> str | None:
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            return match.group(1).rstrip('",\'')
+            url = match.group(1).rstrip('",\'')
+
+            # Validate URL using helper function
+            if _validate_gcs_url(url):
+                return url
 
     return None
 
@@ -237,7 +285,7 @@ Return results in JSON format with URLs for all generated assets:
                             for key in ["captions_url", "image_url", "video_url"]:
                                 if key in parsed and isinstance(parsed[key], str):
                                     url = parsed[key].strip()
-                                    if url.startswith("https://storage.googleapis.com/"):
+                                    if _validate_gcs_url(url):
                                         outputs[key] = url
 
                             json_parsed = True
@@ -254,7 +302,7 @@ Return results in JSON format with URLs for all generated assets:
                     for key in ["captions_url", "image_url", "video_url"]:
                         if key in parsed and isinstance(parsed[key], str):
                             url = parsed[key].strip()
-                            if url.startswith("https://storage.googleapis.com/"):
+                            if _validate_gcs_url(url):
                                 outputs[key] = url
                     json_parsed = True
             except (json.JSONDecodeError, AttributeError) as e:
@@ -294,7 +342,8 @@ Return results in JSON format with URLs for all generated assets:
 
     except Exception as e:
         logger.error(f"[ADK] Asset generation failed for job {event_id}: {e}", exc_info=True)
-        raise
+        # Wrap in custom exception to signal fallback should occur
+        raise AdkOrchestrationError(f"ADK orchestration failed: {e}") from e
 
 
 async def _generate_assets_legacy(
@@ -504,15 +553,43 @@ async def consume_task(
 
     try:
         # FEATURE FLAG: Choose orchestration method
-        if should_use_adk(event_id):
-            logger.info(f"[ADK] Using ADK orchestration for job {event_id}")
-            outputs = await _generate_assets_with_adk(
-                event_id=event_id,
-                task_list=task_list,
-                firestore_service=firestore_service,
+        use_adk = should_use_adk(event_id)
+
+        try:
+            if use_adk:
+                logger.info(f"[ADK] Using ADK orchestration for job {event_id}")
+                outputs = await _generate_assets_with_adk(
+                    event_id=event_id,
+                    task_list=task_list,
+                    firestore_service=firestore_service,
+                )
+            else:
+                logger.info(f"[LEGACY] Using legacy orchestration for job {event_id}")
+                outputs = await _generate_assets_legacy(
+                    event_id=event_id,
+                    task_list=task_list,
+                    firestore_service=firestore_service,
+                    storage_service=storage_service,
+                    copy_service=copy_service,
+                    image_service=image_service,
+                    video_service=video_service,
+                )
+        except AdkOrchestrationError as adk_error:
+            # ADK failed, fall back to legacy orchestration
+            logger.warning(
+                f"[ADK] Orchestration failed for job {event_id}, falling back to legacy: {adk_error}"
             )
-        else:
-            logger.info(f"[LEGACY] Using legacy orchestration for job {event_id}")
+
+            # Log ADK failure for monitoring
+            try:
+                await firestore_service.add_job_warning(
+                    event_id,
+                    f"ADK orchestration failed, used legacy fallback: {str(adk_error.__cause__)}"
+                )
+            except Exception as warn_error:
+                logger.error(f"Failed to log ADK fallback warning: {warn_error}")
+
+            # Fall back to legacy orchestration
             outputs = await _generate_assets_legacy(
                 event_id=event_id,
                 task_list=task_list,

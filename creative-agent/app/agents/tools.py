@@ -41,6 +41,13 @@ async def generate_captions_tool(
     try:
         logger.info(f"[ADK Tool] Generating captions for event {event_id}")
 
+        # Validate 'n' parameter before passing to Pydantic (security hardening)
+        if 'n' in config:
+            n = config['n']
+            if not isinstance(n, int) or n > 20 or n < 1:
+                logger.error(f"[ADK Tool] Invalid n value: {n}")
+                return {"error": f"n must be between 1 and 20 captions, got: {n}"}
+
         caption_config = CaptionTaskConfig(**config)
         copy_service = get_copy_service()
         storage_service = get_storage_service()
@@ -81,6 +88,13 @@ async def generate_image_tool(
     """
     try:
         logger.info(f"[ADK Tool] Generating image for event {event_id}")
+
+        # Validate max_file_size_mb before passing to Pydantic (security hardening)
+        if 'max_file_size_mb' in config:
+            max_size = config['max_file_size_mb']
+            if not isinstance(max_size, (int, float)) or max_size > 100 or max_size < 0:
+                logger.error(f"[ADK Tool] Invalid max_file_size_mb: {max_size}")
+                return {"error": f"max_file_size_mb must be between 0 and 100 MB, got: {max_size}"}
 
         image_config = ImageTaskConfig(**config)
         image_service = get_image_service()
@@ -129,6 +143,20 @@ async def generate_video_tool(
     """
     try:
         logger.info(f"[ADK Tool] Generating video for event {event_id}")
+
+        # Validate max_file_size_mb before passing to Pydantic (security hardening)
+        if 'max_file_size_mb' in config:
+            max_size = config['max_file_size_mb']
+            if not isinstance(max_size, (int, float)) or max_size > 500 or max_size < 0:
+                logger.error(f"[ADK Tool] Invalid max_file_size_mb: {max_size}")
+                return {"error": f"max_file_size_mb must be between 0 and 500 MB, got: {max_size}"}
+
+        # Validate duration_sec
+        if 'duration_sec' in config:
+            duration = config['duration_sec']
+            if not isinstance(duration, (int, float)) or duration > 60 or duration < 1:
+                logger.error(f"[ADK Tool] Invalid duration_sec: {duration}")
+                return {"error": f"duration_sec must be between 1 and 60 seconds, got: {duration}"}
 
         video_config = VideoTaskConfig(**config)
         video_service = get_video_service()
