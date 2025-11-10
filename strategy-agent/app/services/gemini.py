@@ -374,6 +374,25 @@ Rules:
             data = json.loads(response_text)
             # Add brand_style to the parsed data
             data["brand_style"] = brand_style.model_dump() if brand_style else None
+
+            # Normalize VEO duration to supported values (4, 6, or 8 seconds)
+            # This ensures consistency even if Gemini generates unsupported durations
+            if data.get("video") and "duration_sec" in data["video"]:
+                requested_duration = data["video"]["duration_sec"]
+                if requested_duration <= 5:
+                    normalized_duration = 4
+                elif requested_duration <= 7:
+                    normalized_duration = 6
+                else:
+                    normalized_duration = 8
+
+                if normalized_duration != requested_duration:
+                    logger.info(
+                        f"Normalized VEO duration from {requested_duration}s to {normalized_duration}s "
+                        f"(VEO 3.0 only supports 4, 6, or 8 seconds)"
+                    )
+                    data["video"]["duration_sec"] = normalized_duration
+
             task_list = TaskList(**data)
 
             logger.info(f"Generated task list via Gemini: {task_list.model_dump_json()}")
