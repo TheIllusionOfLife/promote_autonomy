@@ -97,12 +97,12 @@ async def test_reference_image_integration():
         print(f"Platforms: {[p.value for p in task_list.target_platforms]}")
 
         if task_list.captions:
-            print(f"\nCaptions:")
+            print("\nCaptions:")
             print(f"  - Count: {task_list.captions.n}")
             print(f"  - Style: {task_list.captions.style}")
 
         if task_list.image:
-            print(f"\nImage:")
+            print("\nImage:")
             print(f"  - Prompt: {task_list.image.prompt}")
             print(f"  - Size: {task_list.image.size}")
             print(f"  - Aspect Ratio: {task_list.image.aspect_ratio}")
@@ -115,7 +115,7 @@ async def test_reference_image_integration():
                 print(f"Prompt: {task_list.image.prompt}")
 
         if task_list.video:
-            print(f"\nVideo:")
+            print("\nVideo:")
             print(f"  - Prompt: {task_list.video.prompt}")
             print(f"  - Duration: {task_list.video.duration_sec}s")
 

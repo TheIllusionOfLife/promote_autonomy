@@ -1,5 +1,6 @@
 """Tests for Gemini service."""
 
+import asyncio
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 
@@ -210,6 +211,3 @@ Product Analysis:
             # Verify fallback analysis was returned
             assert isinstance(analysis, str)
             assert "Reference product image" in analysis or "test goal" in analysis.lower()
-
-
-import asyncio

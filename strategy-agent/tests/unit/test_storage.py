@@ -133,7 +133,6 @@ class TestRealStorageService:
             mock_client = Mock()
             mock_bucket = Mock()
             mock_blob_jpg = Mock()
-            mock_blob_png = Mock()
 
             # Mock list_blobs to return one matching blob
             mock_bucket.list_blobs.return_value = [mock_blob_jpg]
@@ -195,8 +194,9 @@ class TestRealStorageService:
 
             url = await service.upload_reference_image("event123", content, content_type)
 
-            # Verify correct extension
+            # Verify correct extension and returned URL
             mock_bucket.blob.assert_called_with("event123/reference_image.png")
+            assert url.endswith("/event123/reference_image.png")
 
 
 def test_get_storage_service_mock():
