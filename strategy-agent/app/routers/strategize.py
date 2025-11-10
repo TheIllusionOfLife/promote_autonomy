@@ -180,6 +180,15 @@ async def strategize(
                     detail=f"Reference image must be less than {settings.MAX_REFERENCE_IMAGE_SIZE_MB}MB",
                 )
 
+            # Validate actual file type using magic numbers (prevents Content-Type spoofing)
+            import imghdr
+            detected_type = imghdr.what(None, h=content[:32])
+            if detected_type not in ["jpeg", "png"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid image file. Detected type: {detected_type or 'unknown'}. Only JPEG and PNG images are supported.",
+                )
+
             # Upload using already-read content (avoid double-read)
             reference_url = await storage_service.upload_reference_image(
                 event_id=event_id,

@@ -136,13 +136,18 @@ class RealStorageService:
         # Upload with content type
         blob.upload_from_string(content, content_type=content_type)
 
-        # Make blob publicly readable
+        # Make blob publicly readable (required for Gemini Vision API access)
         try:
             blob.make_public()
         except Exception as e:
             import logging
-            logging.error(f"Failed to make blob public: {e}. File uploaded but not publicly accessible.")
-            return blob.public_url
+            logging.error(f"Failed to make blob public: {e}")
+            # Delete the uploaded blob since it can't be made public
+            try:
+                blob.delete()
+            except Exception:
+                pass  # Best effort cleanup
+            raise RuntimeError(f"Failed to make uploaded image publicly accessible: {str(e)}")
 
         return blob.public_url
 

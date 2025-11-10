@@ -95,17 +95,20 @@ class RealStorageService:
         # Upload with content type
         blob.upload_from_string(content, content_type=content_type)
 
-        # Make blob publicly readable
+        # Make blob publicly readable (required for public access to marketing assets)
         # This requires storage.objects.setIamPolicy permission
         # Bucket must not have public access prevention enforced
         try:
             blob.make_public()
         except Exception as e:
-            # Log error but don't fail - file is uploaded even if public access fails
             import logging
-            logging.error(f"Failed to make blob public: {e}. File uploaded but not publicly accessible.")
-            # Return the URL anyway - it may work if bucket-level permissions allow
-            return blob.public_url
+            logging.error(f"Failed to make blob public: {e}")
+            # Delete the uploaded blob since it can't be made public
+            try:
+                blob.delete()
+            except Exception:
+                pass  # Best effort cleanup
+            raise RuntimeError(f"Failed to make uploaded file publicly accessible: {str(e)}")
 
         # Return public URL
         return blob.public_url
