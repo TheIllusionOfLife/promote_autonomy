@@ -177,6 +177,19 @@ async def consume_task(
 
             logger.info(f"Generating video for job {event_id}")
             video_bytes = await video_service.generate_video(task_list.video)
+
+            # Check if video exceeds size limit and store warning
+            if task_list.video.max_file_size_mb:
+                size_mb = len(video_bytes) / (1024 * 1024)
+                if size_mb > task_list.video.max_file_size_mb:
+                    warning_msg = (
+                        f"Generated video size ({size_mb:.2f} MB) exceeds "
+                        f"platform limit ({task_list.video.max_file_size_mb} MB). "
+                        f"This video may not upload successfully to the target platform."
+                    )
+                    await firestore_service.add_job_warning(event_id, warning_msg)
+                    logger.warning(f"Stored warning for job {event_id}: {warning_msg}")
+
             url = await storage_service.upload_file(
                 event_id=event_id,
                 filename="video.mp4",

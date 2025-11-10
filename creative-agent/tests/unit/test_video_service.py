@@ -446,3 +446,142 @@ class TestVideoServiceFactory:
             service2 = get_video_service()
 
             assert service1 is service2
+
+
+class TestVideoFileSizeWarning:
+    """Tests for video file size warning behavior."""
+
+    @pytest.mark.asyncio
+    async def test_logs_warning_when_video_exceeds_size_limit(self):
+        """Test that warning is logged when generated video exceeds max_file_size_mb."""
+        from app.services.video import RealVeoVideoService
+        import logging
+
+        # Mock google.genai module
+        mock_genai = Mock()
+        mock_genai_types = Mock()
+        mock_config = Mock()
+        mock_config.aspect_ratio = "16:9"
+        mock_genai_types.GenerateVideosConfig = Mock(return_value=mock_config)
+
+        mock_client = Mock()
+        mock_operation = Mock()
+        mock_operation.done = True
+        mock_operation.error = None
+        mock_result = Mock()
+        mock_video = Mock()
+        mock_video.uri = "gs://test-bucket/oversized-video.mp4"
+        mock_result.generated_videos = [mock_video]
+        mock_operation.result = mock_result
+
+        mock_client.operations.get = Mock(return_value=mock_operation)
+        mock_client.models.generate_videos = Mock(return_value=mock_operation)
+        mock_genai.Client = Mock(return_value=mock_client)
+        mock_genai.types = mock_genai_types
+
+        mock_storage = Mock()
+
+        # Create oversized video (5.2 MB)
+        oversized_video = b"x" * (5 * 1024 * 1024 + 200 * 1024)
+
+        with patch.dict("sys.modules", {
+            "google.genai": mock_genai,
+            "google.genai.types": mock_genai_types,
+            "google.cloud.storage": mock_storage
+        }):
+            with patch("app.services.video.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_settings.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
+                mock_settings.VEO_TIMEOUT_SEC = 360
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 0.001
+                mock_get_settings.return_value = mock_settings
+
+                service = RealVeoVideoService()
+                service._download_from_gcs = AsyncMock(return_value=oversized_video)
+
+                # Capture log messages
+                with patch("app.services.video.logger") as mock_logger:
+                    config = VideoTaskConfig(
+                        prompt="Test video",
+                        duration_sec=15,
+                        max_file_size_mb=4.0  # Limit is 4 MB
+                    )
+                    video_bytes = await service.generate_video(config)
+
+                    # Verify video is still returned
+                    assert video_bytes == oversized_video
+
+                    # Verify warning was logged
+                    mock_logger.warning.assert_called_once()
+                    warning_message = mock_logger.warning.call_args[0][0]
+                    assert "5." in warning_message  # Size approximately 5.2 MB
+                    assert "4.0" in warning_message  # Max limit
+                    assert "exceeds" in warning_message
+
+    @pytest.mark.asyncio
+    async def test_no_warning_when_video_within_size_limit(self):
+        """Test that no warning is logged when video is within size limit."""
+        from app.services.video import RealVeoVideoService
+
+        # Mock google.genai module
+        mock_genai = Mock()
+        mock_genai_types = Mock()
+        mock_config = Mock()
+        mock_config.aspect_ratio = "16:9"
+        mock_genai_types.GenerateVideosConfig = Mock(return_value=mock_config)
+
+        mock_client = Mock()
+        mock_operation = Mock()
+        mock_operation.done = True
+        mock_operation.error = None
+        mock_result = Mock()
+        mock_video = Mock()
+        mock_video.uri = "gs://test-bucket/small-video.mp4"
+        mock_result.generated_videos = [mock_video]
+        mock_operation.result = mock_result
+
+        mock_client.operations.get = Mock(return_value=mock_operation)
+        mock_client.models.generate_videos = Mock(return_value=mock_operation)
+        mock_genai.Client = Mock(return_value=mock_client)
+        mock_genai.types = mock_genai_types
+
+        mock_storage = Mock()
+
+        # Create small video (2 MB)
+        small_video = b"x" * (2 * 1024 * 1024)
+
+        with patch.dict("sys.modules", {
+            "google.genai": mock_genai,
+            "google.genai.types": mock_genai_types,
+            "google.cloud.storage": mock_storage
+        }):
+            with patch("app.services.video.get_settings") as mock_get_settings:
+                mock_settings = Mock()
+                mock_settings.PROJECT_ID = "test-project"
+                mock_settings.LOCATION = "us-central1"
+                mock_settings.VEO_MODEL = "veo-3.0-generate-001"
+                mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
+                mock_settings.VEO_TIMEOUT_SEC = 360
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 0.001
+                mock_get_settings.return_value = mock_settings
+
+                service = RealVeoVideoService()
+                service._download_from_gcs = AsyncMock(return_value=small_video)
+
+                # Capture log messages
+                with patch("app.services.video.logger") as mock_logger:
+                    config = VideoTaskConfig(
+                        prompt="Test video",
+                        duration_sec=15,
+                        max_file_size_mb=4.0  # Limit is 4 MB, video is 2 MB
+                    )
+                    video_bytes = await service.generate_video(config)
+
+                    # Verify video is returned
+                    assert video_bytes == small_video
+
+                    # Verify NO warning was logged
+                    mock_logger.warning.assert_not_called()
