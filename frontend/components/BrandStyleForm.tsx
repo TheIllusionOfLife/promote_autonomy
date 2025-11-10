@@ -21,6 +21,11 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
       setColors(value.colors);
       setTone(value.tone);
       setTagline(value.tagline || '');
+    } else {
+      // Reset to defaults when value is null
+      setColors([{ hex_code: '000000', name: 'Primary', usage: 'primary' }]);
+      setTone('professional');
+      setTagline('');
     }
   }, [value]);
 
