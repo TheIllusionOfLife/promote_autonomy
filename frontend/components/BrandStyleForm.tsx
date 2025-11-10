@@ -60,6 +60,35 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
     field: keyof BrandColor,
     value: string
   ) => {
+    // Validate hex code (must be exactly 6 hex characters)
+    if (field === 'hex_code') {
+      const hexPattern = /^[0-9A-Fa-f]{6}$/;
+      if (!hexPattern.test(value)) {
+        // Don't update if invalid hex code
+        return;
+      }
+    }
+
+    // Prevent multiple primary colors
+    if (field === 'usage' && value === 'primary') {
+      const existingPrimaryIndex = colors.findIndex(
+        (c, i) => i !== index && c.usage === 'primary'
+      );
+      if (existingPrimaryIndex !== -1) {
+        // If another color is already primary, make it general
+        const newColors = colors.map((color, i) => {
+          if (i === existingPrimaryIndex) {
+            return { ...color, usage: 'general' as const };
+          } else if (i === index) {
+            return { ...color, [field]: value };
+          }
+          return color;
+        });
+        handleUpdate(newColors, tone, tagline);
+        return;
+      }
+    }
+
     const newColors = colors.map((color, i) =>
       i === index ? { ...color, [field]: value } : color
     );
@@ -121,7 +150,7 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
                 placeholder="Color name (e.g., Primary Red)"
                 value={color.name}
                 onChange={(e) => updateColor(index, 'name', e.target.value)}
-                maxLength={50}
+                maxLength={30}
                 className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <select
