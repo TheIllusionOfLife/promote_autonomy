@@ -207,19 +207,9 @@ class RealVeoVideoService:
         # Download video from GCS
         video_bytes = await self._download_from_gcs(video_uri)
 
-        # Check file size constraint if specified
-        if config.max_file_size_mb:
-            size_mb = len(video_bytes) / (1024 * 1024)
-            if size_mb > config.max_file_size_mb:
-                logger.warning(
-                    f"Generated video size ({size_mb:.2f}MB) exceeds maximum "
-                    f"({config.max_file_size_mb}MB). VEO output size cannot be controlled. "
-                    f"Consider using shorter duration or different aspect ratio."
-                )
-                # Note: We still return the video. In production, you might want to:
-                # 1. Re-encode with ffmpeg to compress (requires ffmpeg installation)
-                # 2. Reject and raise an error
-                # 3. Return as-is with warning (current approach)
+        # Note: File size validation is performed in consume.py after generation
+        # to store warnings in Firestore for user visibility. The video service
+        # focuses solely on video generation and download.
 
         return video_bytes
 

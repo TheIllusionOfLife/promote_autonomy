@@ -11,27 +11,21 @@ import { PLATFORM_SPECS } from '@/lib/types';
 function detectAspectRatioConflicts(platforms: Platform[]): string[] {
   if (platforms.length <= 1) return [];
 
-  const aspectRatios: Record<Platform, string> = {
-    instagram_story: '9:16',
-    instagram_feed: '1:1',
-    twitter: '16:9',
-    facebook: '1.91:1',
-    linkedin: '1.91:1',
-    youtube: '16:9',
-  };
+  // Use PLATFORM_SPECS to avoid hardcoding aspect ratios (DRY)
+  const getAspectRatio = (p: Platform) => PLATFORM_SPECS[p].image_aspect_ratio;
 
-  const portrait = platforms.filter(p => aspectRatios[p] === '9:16');
-  const square = platforms.filter(p => aspectRatios[p] === '1:1');
-  const landscape = platforms.filter(p => ['16:9', '1.91:1'].includes(aspectRatios[p]));
+  const portrait = platforms.filter(p => getAspectRatio(p) === '9:16');
+  const square = platforms.filter(p => getAspectRatio(p) === '1:1');
+  const landscape = platforms.filter(p => ['16:9', '1.91:1'].includes(getAspectRatio(p)));
 
   const categoriesUsed = [portrait, square, landscape].filter(c => c.length > 0).length;
 
   if (categoriesUsed > 1) {
     const firstPlatform = platforms[0];
-    const firstRatio = aspectRatios[firstPlatform];
+    const firstRatio = getAspectRatio(firstPlatform);
     const conflicting = platforms.slice(1)
-      .filter(p => aspectRatios[p] !== firstRatio)
-      .map(p => `${p.replace('_', ' ')} (${aspectRatios[p]})`);
+      .filter(p => getAspectRatio(p) !== firstRatio)
+      .map(p => `${p.replace('_', ' ')} (${getAspectRatio(p)})`);
 
     if (conflicting.length > 0) {
       return [`⚠️ Selected platforms have different aspect ratios. Assets will use ${firstPlatform.replace('_', ' ')} format (${firstRatio}). Conflicting: ${conflicting.join(', ')}`];

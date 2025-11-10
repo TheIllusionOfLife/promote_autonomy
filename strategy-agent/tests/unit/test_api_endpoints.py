@@ -239,8 +239,9 @@ class TestStrategizeEndpoint:
         # If there are warnings, they shouldn't be about major aspect ratio conflicts
         if data["warnings"]:
             warning_text = " ".join(data["warnings"]).lower()
-            # Allow minor warnings but not major conflicts
-            # This is lenient since 16:9 and 1.91:1 are similar landscape ratios
+            # Should not have major aspect ratio conflict warnings
+            # (portrait vs landscape conflicts)
+            assert "portrait" not in warning_text and "square" not in warning_text
 
     def test_no_aspect_ratio_warning_single_platform(self, test_client, mock_user_id, sample_goal, auth_headers):
         """Test no warning for single platform (no conflicts possible)."""
@@ -260,8 +261,8 @@ class TestStrategizeEndpoint:
         assert "warnings" in data
         if data["warnings"]:
             warning_text = " ".join(data["warnings"]).lower()
-            # Should not mention aspect ratio conflicts
-            assert "conflict" not in warning_text or "aspect ratio" not in warning_text
+            # Should not mention aspect ratio conflicts (both terms together)
+            assert not ("aspect ratio" in warning_text and "conflict" in warning_text)
 
 
 @pytest.mark.unit
