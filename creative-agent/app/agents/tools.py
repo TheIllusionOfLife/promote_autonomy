@@ -1,10 +1,14 @@
-"""ADK tools for asset generation."""
+"""ADK tools for asset generation.
+
+These are regular Python functions that ADK automatically wraps as tools.
+The framework inspects function signatures, docstrings, and type hints to
+generate tool schemas for the LLM.
+"""
 
 import json
 import logging
 from typing import Any
 
-from google.adk.tools import Tool
 from promote_autonomy_shared.schemas import (
     CaptionTaskConfig,
     ImageTaskConfig,
@@ -19,13 +23,12 @@ from app.services.storage import get_storage_service
 logger = logging.getLogger(__name__)
 
 
-@Tool(description="Generate social media captions using Gemini")
 async def generate_captions_tool(
     config: dict[str, Any],
     goal: str,
     event_id: str
 ) -> dict[str, str]:
-    """Generate captions and upload to Cloud Storage.
+    """Generate social media captions using Gemini and upload to Cloud Storage.
 
     Args:
         config: Caption configuration with keys 'n' (int) and 'style' (str)
@@ -63,12 +66,11 @@ async def generate_captions_tool(
         return {"error": f"Caption generation failed: {str(e)}"}
 
 
-@Tool(description="Generate promotional images using Imagen")
 async def generate_image_tool(
     config: dict[str, Any],
     event_id: str
 ) -> dict[str, str]:
-    """Generate image and upload to Cloud Storage.
+    """Generate promotional images using Imagen and upload to Cloud Storage.
 
     Args:
         config: Image configuration with keys 'prompt', 'size', 'aspect_ratio', 'max_file_size_mb'
@@ -112,12 +114,11 @@ async def generate_image_tool(
         return {"error": f"Image generation failed: {str(e)}"}
 
 
-@Tool(description="Generate promotional videos using Veo")
 async def generate_video_tool(
     config: dict[str, Any],
     event_id: str
 ) -> dict[str, str]:
-    """Generate video and upload to Cloud Storage.
+    """Generate promotional videos using Veo and upload to Cloud Storage.
 
     Args:
         config: Video configuration with keys 'prompt', 'duration_sec', 'aspect_ratio', 'max_file_size_mb'

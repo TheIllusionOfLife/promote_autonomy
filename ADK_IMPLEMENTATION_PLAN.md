@@ -179,11 +179,16 @@ class Settings(BaseSettings):
 **Implementation: `app/agents/tools.py`**
 
 ```python
-"""ADK tools for asset generation."""
+"""ADK tools for asset generation.
 
+These are regular Python functions that ADK automatically wraps as tools.
+The framework inspects function signatures, docstrings, and type hints to
+generate tool schemas for the LLM. No @Tool decorator is needed.
+"""
+
+import json
 import asyncio
 from typing import Any
-from google.adk.tools import Tool
 from promote_autonomy_shared.schemas import (
     CaptionTaskConfig,
     ImageTaskConfig,
@@ -196,13 +201,12 @@ from app.services.video import get_video_service
 from app.services.storage import get_storage_service
 
 
-@Tool(description="Generate social media captions using Gemini")
 async def generate_captions_tool(
     config: dict[str, Any],
     goal: str,
     event_id: str
 ) -> dict[str, str]:
-    """Generate captions and upload to Cloud Storage.
+    """Generate social media captions using Gemini and upload to Cloud Storage.
 
     Args:
         config: Caption configuration (n, style)
@@ -232,12 +236,11 @@ async def generate_captions_tool(
     return {"captions_url": url}
 
 
-@Tool(description="Generate promotional images using Imagen")
 async def generate_image_tool(
     config: dict[str, Any],
     event_id: str
 ) -> dict[str, str]:
-    """Generate image and upload to Cloud Storage.
+    """Generate promotional images using Imagen and upload to Cloud Storage.
 
     Args:
         config: Image configuration (prompt, size, aspect_ratio, max_file_size_mb)
@@ -272,12 +275,11 @@ async def generate_image_tool(
     return {"image_url": url}
 
 
-@Tool(description="Generate promotional videos using Veo")
 async def generate_video_tool(
     config: dict[str, Any],
     event_id: str
 ) -> dict[str, str]:
-    """Generate video and upload to Cloud Storage.
+    """Generate promotional videos using Veo and upload to Cloud Storage.
 
     Args:
         config: Video configuration (prompt, duration_sec, aspect_ratio, max_file_size_mb)
@@ -321,10 +323,10 @@ async def generate_video_tool(
 
 **Tasks:**
 - [ ] Create `app/agents/` directory
-- [ ] Implement `generate_captions_tool` with `@Tool` decorator
-- [ ] Implement `generate_image_tool` with `@Tool` decorator
-- [ ] Implement `generate_video_tool` with `@Tool` decorator
-- [ ] Add type hints and comprehensive docstrings
+- [ ] Implement `generate_captions_tool` as a regular async function (ADK auto-wraps it)
+- [ ] Implement `generate_image_tool` as a regular async function (ADK auto-wraps it)
+- [ ] Implement `generate_video_tool` as a regular async function (ADK auto-wraps it)
+- [ ] Add type hints and comprehensive docstrings (ADK uses these for tool schemas)
 - [ ] Handle errors gracefully (tool should return error dict, not raise)
 
 #### 2.2 Create ADK Agent Coordinator
@@ -486,6 +488,10 @@ from app.services.firestore import get_firestore_service
 from app.services.storage import get_storage_service
 
 # NEW: ADK imports
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
 from app.agents.coordinator import get_creative_coordinator
 
 logger = logging.getLogger(__name__)
@@ -545,12 +551,37 @@ Run all tasks in parallel for efficiency.
 Return URLs for all generated assets."""
 
     try:
-        # Run ADK coordinator
-        # Note: ADK's run() is synchronous, so wrap in thread
-        result = await asyncio.to_thread(coordinator.run, prompt)
+        # Run ADK coordinator using Runner API
+        session_service = InMemorySessionService()
+        runner = Runner(
+            agent=coordinator,
+            app_name="creative-agent",
+            session_service=session_service
+        )
+
+        # Create content message for the agent
+        user_message = types.Content(
+            role='user',
+            parts=[types.Part(text=prompt)]
+        )
+
+        # Execute agent and collect response
+        # Note: runner.run() is synchronous, so wrap in thread
+        def run_agent():
+            events = runner.run(
+                user_id="creative-agent",
+                session_id=event_id,  # Use event_id as session_id for traceability
+                new_message=user_message
+            )
+            # Collect final response from events
+            for event in events:
+                if event.is_final_response() and event.content:
+                    return event.content.parts[0].text
+            return ""  # Empty response if no final event
+
+        result = await asyncio.to_thread(run_agent)
 
         # Parse result (ADK returns text, need to extract URLs)
-        # TODO: Improve result parsing - ADK should return structured output
         logger.info(f"[ADK] Raw result: {result}")
 
         # For now, extract URLs from text response

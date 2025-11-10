@@ -41,9 +41,10 @@
 - [ ] `creative-agent/app/agents/coordinator.py`
 
 ### Implement Tools
-- [ ] `generate_captions_tool` with `@Tool` decorator
-- [ ] `generate_image_tool` with `@Tool` decorator
-- [ ] `generate_video_tool` with `@Tool` decorator
+- [ ] `generate_captions_tool` as regular async function (ADK auto-wraps)
+- [ ] `generate_image_tool` as regular async function (ADK auto-wraps)
+- [ ] `generate_video_tool` as regular async function (ADK auto-wraps)
+- [ ] Add comprehensive docstrings (used by ADK for tool schemas)
 - [ ] Test each tool independently
 
 ### Implement Coordinator

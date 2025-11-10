@@ -31,6 +31,10 @@ if TYPE_CHECKING:
     from app.services.video import VideoService
 
 # ADK imports
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
 from app.agents.coordinator import get_creative_coordinator
 
 logger = logging.getLogger(__name__)
@@ -162,9 +166,35 @@ Return results in JSON format with URLs for all generated assets:
 }}"""
 
     try:
-        # Run ADK coordinator
-        # Note: ADK's run() is synchronous, so wrap in thread
-        result = await asyncio.to_thread(coordinator.run, prompt)
+        # Run ADK coordinator using Runner API
+        session_service = InMemorySessionService()
+        runner = Runner(
+            agent=coordinator,
+            app_name="creative-agent",
+            session_service=session_service
+        )
+
+        # Create content message for the agent
+        user_message = types.Content(
+            role='user',
+            parts=[types.Part(text=prompt)]
+        )
+
+        # Execute agent and collect response
+        # Note: runner.run() is synchronous, so wrap in thread
+        def run_agent():
+            events = runner.run(
+                user_id="creative-agent",
+                session_id=event_id,  # Use event_id as session_id for traceability
+                new_message=user_message
+            )
+            # Collect final response from events
+            for event in events:
+                if event.is_final_response() and event.content:
+                    return event.content.parts[0].text
+            return ""  # Empty response if no final event
+
+        result = await asyncio.to_thread(run_agent)
 
         logger.info(f"[ADK] Coordinator completed for job {event_id}")
         logger.debug(f"[ADK] Raw result: {result}")
