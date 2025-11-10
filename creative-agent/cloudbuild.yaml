@@ -29,6 +29,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--no-allow-unauthenticated'
+      - '--set-env-vars'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,STORAGE_BUCKET=$PROJECT_ID-assets'
 
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
