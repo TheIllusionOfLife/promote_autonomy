@@ -65,7 +65,11 @@ class MockVideoService:
         moov_box = struct.pack(">I", moov_size) + b"moov" + moov_content
 
         # mdat box (media data) - placeholder for actual video data
-        mock_video_data = f"MOCK VIDEO - Duration: {config.duration_sec}s - Prompt: {config.prompt}".encode(
+        # Include brand info if provided
+        brand_info = ""
+        if brand_style:
+            brand_info = f" - Brand: {brand_style.tone}"
+        mock_video_data = f"MOCK VIDEO - Duration: {config.duration_sec}s{brand_info} - Prompt: {config.prompt}".encode(
             "utf-8"
         )
         mdat_size = len(mock_video_data) + 8
@@ -79,6 +83,15 @@ class MockVideoService:
 
 class RealVeoVideoService:
     """Real video generation using Google Veo via google.genai SDK."""
+
+    # Class-level constants to avoid recreation on every call
+    TONE_DESCRIPTORS = {
+        "professional": "clean, corporate aesthetic",
+        "casual": "friendly, approachable vibe",
+        "playful": "energetic, fun atmosphere",
+        "luxury": "elegant, sophisticated feel",
+        "technical": "precise, detailed style",
+    }
 
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
@@ -141,19 +154,16 @@ class RealVeoVideoService:
         # Enhance prompt with brand context
         enhanced_prompt = config.prompt
         if brand_style:
-            tone_descriptors = {
-                "professional": "clean, corporate aesthetic",
-                "casual": "friendly, approachable vibe",
-                "playful": "energetic, fun atmosphere",
-                "luxury": "elegant, sophisticated feel",
-                "technical": "precise, detailed style",
-            }
-            tone_desc = tone_descriptors.get(brand_style.tone, "professional style")
+            tone_desc = self.TONE_DESCRIPTORS.get(brand_style.tone, "professional style")
             enhanced_prompt = f"{config.prompt}. Style: {tone_desc}."
 
             if brand_style.colors:
-                primary_color = brand_style.colors[0].hex_code
-                enhanced_prompt += f" Use #{primary_color} as primary color accent."
+                # Find primary color, fallback to first if no primary specified
+                primary_color = next(
+                    (c for c in brand_style.colors if c.usage == "primary"),
+                    brand_style.colors[0]
+                )
+                enhanced_prompt += f" Use {primary_color.name} (#{primary_color.hex_code}) as primary color accent."
 
         # Validate prompt length to prevent abuse and API errors
         MAX_PROMPT_LENGTH = 10000  # Reasonable limit for VEO prompts

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { BrandStyle, BrandColor, BrandTone } from '@/lib/types';
 
 interface BrandStyleFormProps {
@@ -14,6 +14,15 @@ export default function BrandStyleForm({ value, onChange }: BrandStyleFormProps)
   );
   const [tone, setTone] = useState<BrandTone>(value?.tone || 'professional');
   const [tagline, setTagline] = useState(value?.tagline || '');
+
+  // Sync state with prop changes
+  useEffect(() => {
+    if (value) {
+      setColors(value.colors);
+      setTone(value.tone);
+      setTagline(value.tagline || '');
+    }
+  }, [value]);
 
   const handleUpdate = (
     newColors: BrandColor[],

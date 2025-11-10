@@ -73,6 +73,15 @@ class MockGeminiService:
 class RealGeminiService:
     """Real Gemini API implementation."""
 
+    # Class-level constants to avoid recreation on every call
+    TONE_DESCRIPTIONS = {
+        "professional": "corporate, formal language; avoid emojis",
+        "casual": "friendly, conversational tone; emojis are okay",
+        "playful": "fun and energetic; use emojis liberally",
+        "luxury": "sophisticated, elegant language; minimal emojis",
+        "technical": "precise and detailed; use industry terminology",
+    }
+
     def __init__(self):
         """Initialize Gemini client."""
         try:
@@ -99,14 +108,7 @@ class RealGeminiService:
             color_list = ", ".join(
                 [f"{c.name} (#{c.hex_code})" for c in brand_style.colors]
             )
-            tone_descriptions = {
-                "professional": "corporate, formal language; avoid emojis",
-                "casual": "friendly, conversational tone; emojis are okay",
-                "playful": "fun and energetic; use emojis liberally",
-                "luxury": "sophisticated, elegant language; minimal emojis",
-                "technical": "precise and detailed; use industry terminology",
-            }
-            tone_desc = tone_descriptions.get(
+            tone_desc = self.TONE_DESCRIPTIONS.get(
                 brand_style.tone, "professional tone"
             )
 

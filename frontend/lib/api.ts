@@ -35,10 +35,7 @@ export async function strategize(request: StrategizeRequest): Promise<Strategize
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${idToken}`,
     },
-    body: JSON.stringify({
-      ...request,
-      uid: user.uid,
-    }),
+    body: JSON.stringify(request),
   });
 
   if (!response.ok) {

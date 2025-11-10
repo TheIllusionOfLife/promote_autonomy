@@ -41,8 +41,13 @@ class MockImageService:
         # Use brand primary color if available, otherwise default
         bg_color = (100, 149, 237)  # Default: Cornflower blue
         if brand_style and brand_style.colors:
+            # Find primary color, fallback to first if no primary specified
+            primary_color = next(
+                (c for c in brand_style.colors if c.usage == "primary"),
+                brand_style.colors[0]
+            )
             # Convert hex to RGB
-            hex_code = brand_style.colors[0].hex_code
+            hex_code = primary_color.hex_code
             bg_color = tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
 
         # Create image with solid color background
@@ -166,10 +171,18 @@ class RealImageService:
         # Enhance prompt with brand colors if provided
         enhanced_prompt = config.prompt
         if brand_style and brand_style.colors:
-            color_descriptions = ", ".join(
-                [f"{c.name} (#{c.hex_code})" for c in brand_style.colors[:3]]
+            # Find primary color, fallback to first if no primary specified
+            primary_color = next(
+                (c for c in brand_style.colors if c.usage == "primary"),
+                brand_style.colors[0]
             )
-            enhanced_prompt = f"{config.prompt}. Use color palette: {color_descriptions}."
+            # Include primary color prominently, then other colors
+            other_colors = [c for c in brand_style.colors[:3] if c != primary_color]
+            color_desc = f"Primary color: {primary_color.name} (#{primary_color.hex_code})"
+            if other_colors:
+                other_desc = ", ".join([f"{c.name} (#{c.hex_code})" for c in other_colors])
+                color_desc += f". Additional colors: {other_desc}"
+            enhanced_prompt = f"{config.prompt}. {color_desc}."
 
         # Generate image
         response = self.model.generate_images(

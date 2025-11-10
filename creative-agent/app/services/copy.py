@@ -34,6 +34,15 @@ class CopyService(Protocol):
 class MockCopyService:
     """Mock copy generation for testing."""
 
+    # Class-level constants to avoid recreation on every call
+    TONE_EMOJIS = {
+        "professional": "",
+        "casual": "👋",
+        "playful": "🎉",
+        "luxury": "✨",
+        "technical": "⚙️",
+    }
+
     async def generate_captions(
         self,
         config: CaptionTaskConfig,
@@ -47,14 +56,7 @@ class MockCopyService:
         # Adjust emoji usage based on brand tone
         emoji = "✨"
         if brand_style:
-            tone_emojis = {
-                "professional": "",
-                "casual": "👋",
-                "playful": "🎉",
-                "luxury": "✨",
-                "technical": "⚙️",
-            }
-            emoji = tone_emojis.get(brand_style.tone, "✨")
+            emoji = self.TONE_EMOJIS.get(brand_style.tone, "✨")
 
         base_caption = f"{emoji} {top_words}" if emoji else top_words
         captions = []
@@ -79,6 +81,15 @@ class MockCopyService:
 class RealCopyService:
     """Real copy generation using Gemini."""
 
+    # Class-level constants to avoid recreation on every call
+    TONE_INSTRUCTIONS = {
+        "professional": "Use formal, corporate language. Avoid emojis.",
+        "casual": "Use friendly, conversational tone. Emojis are okay.",
+        "playful": "Be fun and energetic. Use emojis liberally.",
+        "luxury": "Use sophisticated, elegant language. Minimal emojis.",
+        "technical": "Be precise and detailed. Use industry terminology.",
+    }
+
     def __init__(self):
         """Initialize Gemini for copy generation."""
         import vertexai
@@ -98,14 +109,7 @@ class RealCopyService:
         # Build brand context
         brand_context = ""
         if brand_style:
-            tone_instructions = {
-                "professional": "Use formal, corporate language. Avoid emojis.",
-                "casual": "Use friendly, conversational tone. Emojis are okay.",
-                "playful": "Be fun and energetic. Use emojis liberally.",
-                "luxury": "Use sophisticated, elegant language. Minimal emojis.",
-                "technical": "Be precise and detailed. Use industry terminology.",
-            }
-            tone_instruction = tone_instructions.get(
+            tone_instruction = self.TONE_INSTRUCTIONS.get(
                 brand_style.tone, "Use professional tone."
             )
 
@@ -148,7 +152,17 @@ Return ONLY the captions, one per line, numbered 1-{config.n}."""
             if clean_line:
                 captions.append(clean_line)
 
-        return captions[:config.n]
+        captions = captions[:config.n]
+
+        # Enforce tagline inclusion if provided
+        # Check if any caption already contains the tagline
+        if brand_style and brand_style.tagline and captions:
+            has_tagline = any(brand_style.tagline in caption for caption in captions)
+            if not has_tagline:
+                # Add tagline to first caption
+                captions[0] = f"{captions[0]} | {brand_style.tagline}"
+
+        return captions
 
 
 # Service instance management
