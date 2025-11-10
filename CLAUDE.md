@@ -132,7 +132,16 @@ gcloud run deploy SERVICE_NAME \
   --set-env-vars=PROJECT_ID=xxx,PUBSUB_TOPIC=yyy
 ```
 
-**Creative Agent requires**: `--no-allow-unauthenticated` with Pub/Sub push subscription configured to use OIDC token.
+**Creative Agent requires**:
+- `--no-allow-unauthenticated` with Pub/Sub push subscription configured to use OIDC token
+- **Region Override**: Deploy to `us-central1` (not asia-northeast1) for VEO 3.0 video generation support
+  ```bash
+  gcloud run deploy creative-agent \
+    --source=./creative-agent \
+    --region=us-central1 \
+    --service-account=creative-agent@PROJECT_ID.iam.gserviceaccount.com \
+    --set-env-vars=LOCATION=us-central1
+  ```
 
 ## Testing Strategy
 

@@ -108,27 +108,30 @@ class TestMockVideoService:
     """Tests for MockVideoService."""
 
     @pytest.mark.asyncio
-    async def test_generate_video_brief(self):
-        """Test video brief generation."""
+    async def test_generate_video_returns_bytes(self):
+        """Test video generation returns video bytes (MP4)."""
         service = MockVideoService()
         config = VideoTaskConfig(prompt="Product showcase", duration_sec=30)
 
-        brief = await service.generate_video_brief(config)
+        video_bytes = await service.generate_video(config)
 
-        assert isinstance(brief, str)
-        assert len(brief) > 0
-        assert "30 seconds" in brief or "30" in brief
-        assert "Product showcase" in brief
+        assert isinstance(video_bytes, bytes)
+        assert len(video_bytes) > 0
+        # Check for MP4 file signature
+        assert b"ftyp" in video_bytes[:32]
 
     @pytest.mark.asyncio
-    async def test_generate_video_brief_includes_prompt(self):
-        """Test brief includes the provided prompt."""
+    async def test_generate_video_different_durations(self):
+        """Test videos can be generated with different durations."""
         service = MockVideoService()
-        config = VideoTaskConfig(prompt="Unique test prompt 12345", duration_sec=15)
+        durations = [5, 15, 30, 60]
 
-        brief = await service.generate_video_brief(config)
+        for duration in durations:
+            config = VideoTaskConfig(prompt="Test video", duration_sec=duration)
+            video_bytes = await service.generate_video(config)
 
-        assert "Unique test prompt 12345" in brief
+            assert isinstance(video_bytes, bytes)
+            assert len(video_bytes) > 0
 
 
 class TestMockFirestoreService:
