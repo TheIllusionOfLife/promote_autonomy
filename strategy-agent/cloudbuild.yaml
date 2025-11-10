@@ -1,4 +1,16 @@
 steps:
+  # Validate required environment variables and substitutions
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Validating required variables..."
+        test -n "$PROJECT_ID" || (echo "ERROR: PROJECT_ID is required" && exit 1)
+        test -n "$_DEPLOY_REGION" || (echo "ERROR: _DEPLOY_REGION is required" && exit 1)
+        test -n "$_SERVICE_NAME" || (echo "ERROR: _SERVICE_NAME is required" && exit 1)
+        echo "✓ All required variables present"
+
   # Build the container image from project root
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -16,6 +28,14 @@ steps:
       - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
   # Deploy container image to Cloud Run
+  # Environment variables:
+  #   PROJECT_ID: GCP project identifier (required by Pydantic Settings)
+  #   LOCATION: Vertex AI region (asia-northeast1 for Gemini API)
+  #   PUBSUB_TOPIC: Topic name for publishing approved tasks (creative-tasks)
+  #   FRONTEND_URL: Placeholder, updated after frontend deployment for CORS
+  # Service account: strategy-agent@PROJECT_ID.iam.gserviceaccount.com
+  #   Requires: Firestore write, Pub/Sub publish, Vertex AI (Gemini) access
+  # Note: FRONTEND_URL is set to placeholder and must be updated after frontend deployment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -28,6 +48,16 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
+      - '--service-account'
+      - 'strategy-agent@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--set-env-vars'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,PUBSUB_TOPIC=creative-tasks,FRONTEND_URL=https://placeholder-will-be-updated.run.app'
+      - '--memory'
+      - '1Gi'
+      - '--timeout'
+      - '300'  # 5 min: Gemini API (2 min timeout) + task validation + Pub/Sub publish
+      - '--max-instances'
+      - '10'
 
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'

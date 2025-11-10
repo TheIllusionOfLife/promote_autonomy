@@ -8,6 +8,30 @@ import type { StrategizeRequest, StrategizeResponse, ApproveRequest, ApproveResp
 const STRATEGY_AGENT_URL = process.env.NEXT_PUBLIC_STRATEGY_AGENT_URL || 'http://localhost:8000';
 
 /**
+ * Format FastAPI validation error details into a readable message.
+ */
+function formatErrorDetail(detail: unknown): string {
+  // If detail is a string, return it directly
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  // If detail is an array of validation errors (FastAPI 422 format)
+  if (Array.isArray(detail)) {
+    return detail
+      .map((err: { loc?: (string | number)[]; msg?: string }) => {
+        const field = err.loc?.slice(1).join('.') || 'field';
+        const message = err.msg || 'validation error';
+        return `${field}: ${message}`;
+      })
+      .join(', ');
+  }
+
+  // Fallback for other types
+  return JSON.stringify(detail);
+}
+
+/**
  * Get current user's ID token for API authentication.
  */
 async function getIdToken(): Promise<string> {
@@ -46,7 +70,10 @@ export async function strategize(goal: string, target_platforms: string[]): Prom
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || `Strategize failed: ${response.statusText}`);
+      const errorMessage = errorData.detail
+        ? formatErrorDetail(errorData.detail)
+        : `Strategize failed: ${response.statusText}`;
+      throw new Error(errorMessage);
     } else {
       const error = await response.text();
       throw new Error(`Strategize failed: ${error || response.statusText}`);
@@ -83,7 +110,10 @@ export async function approveJob(eventId: string): Promise<ApproveResponse> {
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || `Approve failed: ${response.statusText}`);
+      const errorMessage = errorData.detail
+        ? formatErrorDetail(errorData.detail)
+        : `Approve failed: ${response.statusText}`;
+      throw new Error(errorMessage);
     } else {
       const error = await response.text();
       throw new Error(`Approve failed: ${error || response.statusText}`);

@@ -1,4 +1,16 @@
 steps:
+  # Validate required environment variables and substitutions
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Validating required variables..."
+        test -n "$PROJECT_ID" || (echo "ERROR: PROJECT_ID is required" && exit 1)
+        test -n "$_DEPLOY_REGION" || (echo "ERROR: _DEPLOY_REGION is required" && exit 1)
+        test -n "$_SERVICE_NAME" || (echo "ERROR: _SERVICE_NAME is required" && exit 1)
+        echo "✓ All required variables present"
+
   # Build the container image from project root
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -16,6 +28,13 @@ steps:
       - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
   # Deploy container image to Cloud Run
+  # Environment variables:
+  #   PROJECT_ID: GCP project identifier (required by Pydantic Settings)
+  #   LOCATION: Vertex AI region (us-central1 required for VEO 3.0)
+  #   STORAGE_BUCKET: GCS bucket for generated assets (format: project-id-assets)
+  #   VIDEO_OUTPUT_GCS_BUCKET: VEO video output path (format: gs://bucket-name/veo-output)
+  # Service account: creative-agent@PROJECT_ID.iam.gserviceaccount.com
+  #   Requires: Firestore write, Storage write, Vertex AI access, Pub/Sub subscribe
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -28,14 +47,24 @@ steps:
       - '$_DEPLOY_REGION'
       - '--platform'
       - 'managed'
+      - '--service-account'
+      - 'creative-agent@$PROJECT_ID.iam.gserviceaccount.com'
       - '--no-allow-unauthenticated'
+      - '--set-env-vars'
+      - 'PROJECT_ID=$PROJECT_ID,LOCATION=$_DEPLOY_REGION,STORAGE_BUCKET=$PROJECT_ID-assets,VIDEO_OUTPUT_GCS_BUCKET=gs://$PROJECT_ID-assets/veo-output'
+      - '--memory'
+      - '2Gi'
+      - '--timeout'
+      - '900'  # 15 min: VEO generation (6 min) + overhead + multi-asset tasks
+      - '--max-instances'
+      - '10'
 
 images:
   - '$_GCR_HOSTNAME/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
 
 substitutions:
   _SERVICE_NAME: creative-agent
-  _DEPLOY_REGION: us-central1
+  _DEPLOY_REGION: us-central1  # Required for VEO 3.0 video generation
   _GCR_HOSTNAME: us.gcr.io
   _REPO_NAME: cloud-run-source-deploy
 
