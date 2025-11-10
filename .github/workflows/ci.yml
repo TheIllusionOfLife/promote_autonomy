@@ -78,6 +78,12 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -v
+        env:
+          USE_MOCK_VEO: "true"
+          USE_MOCK_IMAGEN: "true"
+          USE_MOCK_GEMINI: "true"
+          USE_MOCK_FIRESTORE: "true"
+          USE_MOCK_STORAGE: "true"
 
   lint-frontend:
     name: Lint Frontend
