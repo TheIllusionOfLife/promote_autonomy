@@ -18,7 +18,6 @@ from promote_autonomy_shared.schemas import (
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 
 class GeminiService(Protocol):
@@ -182,8 +181,10 @@ class RealGeminiService:
             import vertexai
             from vertexai.generative_models import GenerativeModel
 
+            settings = get_settings()
             vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION)
             self.model = GenerativeModel(settings.GEMINI_MODEL)
+            self.settings = settings
             logger.info(
                 f"Initialized Gemini model: {settings.GEMINI_MODEL} "
                 f"in {settings.LOCATION}"
@@ -228,7 +229,7 @@ Provide this analysis in a detailed, structured format (200-400 words) that can 
                     self.model.generate_content,
                     [image_part, prompt]
                 ),
-                timeout=settings.GEMINI_TIMEOUT_SEC
+                timeout=self.settings.GEMINI_TIMEOUT_SEC
             )
 
             analysis = response.text.strip()
@@ -308,7 +309,7 @@ Rules:
             # Add timeout to prevent infinite hangs
             response = await asyncio.wait_for(
                 asyncio.to_thread(self.model.generate_content, prompt),
-                timeout=settings.GEMINI_TIMEOUT_SEC
+                timeout=self.settings.GEMINI_TIMEOUT_SEC
             )
             response_text = response.text.strip()
 
@@ -338,6 +339,7 @@ Rules:
 
 def get_gemini_service() -> GeminiService:
     """Get Gemini service (mock or real based on settings)."""
+    settings = get_settings()
     if settings.USE_MOCK_GEMINI:
         return MockGeminiService()
     return RealGeminiService()
