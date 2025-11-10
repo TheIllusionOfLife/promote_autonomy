@@ -173,6 +173,7 @@ export default function Home() {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate strategy');
+      setStrategizeWarnings([]); // Clear stale warnings on error
     } finally {
       setLoading(false);
     }
