@@ -160,6 +160,102 @@ class TestStrategizeEndpoint:
         )
         assert response.status_code == 403
 
+    def test_aspect_ratio_warning_story_plus_twitter(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test warning for Instagram Story (9:16) + Twitter (16:9) conflict."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_story", "twitter"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have warning about aspect ratio conflict
+        assert "warnings" in data
+        assert len(data["warnings"]) > 0
+        warning_text = " ".join(data["warnings"]).lower()
+        assert "aspect ratio" in warning_text or "9:16" in warning_text
+
+    def test_aspect_ratio_warning_feed_plus_linkedin(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test warning for Instagram Feed (1:1) + LinkedIn (1.91:1) conflict."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_feed", "linkedin"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have warning about aspect ratio conflict
+        assert "warnings" in data
+        assert len(data["warnings"]) > 0
+        warning_text = " ".join(data["warnings"]).lower()
+        assert "aspect ratio" in warning_text or "1:1" in warning_text
+
+    def test_aspect_ratio_warning_multiple_conflicts(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test multiple warnings for Story (9:16) + Feed (1:1) + Twitter (16:9) conflicts."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_story", "instagram_feed", "twitter"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have warnings about aspect ratio conflicts
+        # All three platforms have different aspect ratios
+        assert "warnings" in data
+        assert len(data["warnings"]) >= 1  # At least one warning for conflicts
+
+    def test_no_aspect_ratio_warning_compatible_platforms(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test no warning for Twitter (16:9) + LinkedIn (1.91:1) - both landscape."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["twitter", "linkedin"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have no warnings for compatible platforms
+        # Twitter and LinkedIn are both landscape (16:9 and 1.91:1 are close enough)
+        assert "warnings" in data
+        assert not data["warnings"], f"Expected no warnings for compatible platforms, but got: {data['warnings']}"
+
+    def test_no_aspect_ratio_warning_single_platform(self, test_client, mock_user_id, sample_goal, auth_headers):
+        """Test no warning for single platform (no conflicts possible)."""
+        response = test_client.post(
+            "/api/strategize",
+            json={
+                "goal": sample_goal,
+                "target_platforms": ["instagram_story"],
+                "uid": mock_user_id
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have no warnings for single platform (no conflicts possible)
+        assert "warnings" in data
+        assert not data["warnings"], f"Expected no warnings for a single platform, but got: {data['warnings']}"
+
 
 @pytest.mark.unit
 class TestApproveEndpoint:

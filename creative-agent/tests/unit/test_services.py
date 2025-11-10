@@ -291,6 +291,82 @@ class TestMockFirestoreService:
         with pytest.raises(ValueError, match="not found"):
             await service.update_job_status("nonexistent-id", JobStatus.COMPLETED)
 
+    @pytest.mark.asyncio
+    async def test_add_job_warning(self):
+        """Test adding warning to existing job."""
+        service = MockFirestoreService()
+
+        # Create initial job
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
+        service.jobs["test-event-id"] = {
+            "event_id": "test-event-id",
+            "uid": "test-user",
+            "status": JobStatus.PROCESSING,
+            "task_list": task_list.model_dump(),
+            "created_at": "2025-11-08T10:00:00Z",
+            "updated_at": "2025-11-08T10:00:00Z",
+            "warnings": [],
+        }
+
+        # Add warning
+        updated_job = await service.add_job_warning(
+            "test-event-id",
+            "Video file size (5.2 MB) exceeds platform limit (4.0 MB)"
+        )
+
+        assert len(updated_job.warnings) == 1
+        assert "5.2 MB" in updated_job.warnings[0]
+        assert "4.0 MB" in updated_job.warnings[0]
+
+    @pytest.mark.asyncio
+    async def test_add_multiple_warnings(self):
+        """Test adding multiple warnings to same job."""
+        service = MockFirestoreService()
+
+        # Create initial job
+        task_list = TaskList(
+            goal="Test goal",
+            target_platforms=["instagram_story", "twitter"],
+            captions=CaptionTaskConfig(n=1),
+        )
+        service.jobs["test-event-id"] = {
+            "event_id": "test-event-id",
+            "uid": "test-user",
+            "status": JobStatus.PROCESSING,
+            "task_list": task_list.model_dump(),
+            "created_at": "2025-11-08T10:00:00Z",
+            "updated_at": "2025-11-08T10:00:00Z",
+            "warnings": [],
+        }
+
+        # Add first warning
+        await service.add_job_warning(
+            "test-event-id",
+            "Video file size exceeds limit"
+        )
+
+        # Add second warning
+        updated_job = await service.add_job_warning(
+            "test-event-id",
+            "Image quality reduced due to size constraints"
+        )
+
+        assert len(updated_job.warnings) == 2
+        assert "Video file size" in updated_job.warnings[0]
+        assert "Image quality" in updated_job.warnings[1]
+
+    @pytest.mark.asyncio
+    async def test_add_warning_to_nonexistent_job_raises_error(self):
+        """Test adding warning to nonexistent job raises error."""
+        service = MockFirestoreService()
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.add_job_warning("nonexistent-id", "Some warning")
+
 
 class TestMockStorageService:
     """Tests for MockStorageService."""

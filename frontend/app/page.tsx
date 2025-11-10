@@ -8,6 +8,33 @@ import { strategize, approveJob } from '@/lib/api';
 import type { Job, Platform } from '@/lib/types';
 import { PLATFORM_SPECS } from '@/lib/types';
 
+function detectAspectRatioConflicts(platforms: Platform[]): string[] {
+  if (platforms.length <= 1) return [];
+
+  // Use PLATFORM_SPECS to avoid hardcoding aspect ratios (DRY)
+  const getAspectRatio = (p: Platform) => PLATFORM_SPECS[p].image_aspect_ratio;
+
+  const portrait = platforms.filter(p => getAspectRatio(p) === '9:16');
+  const square = platforms.filter(p => getAspectRatio(p) === '1:1');
+  const landscape = platforms.filter(p => ['16:9', '1.91:1'].includes(getAspectRatio(p)));
+
+  const categoriesUsed = [portrait, square, landscape].filter(c => c.length > 0).length;
+
+  if (categoriesUsed > 1) {
+    const firstPlatform = platforms[0];
+    const firstRatio = getAspectRatio(firstPlatform);
+    const conflicting = platforms.slice(1)
+      .filter(p => getAspectRatio(p) !== firstRatio)
+      .map(p => `${p.replace('_', ' ')} (${getAspectRatio(p)})`);
+
+    if (conflicting.length > 0) {
+      return [`⚠️ Selected platforms have different aspect ratios. Assets will use ${firstPlatform.replace('_', ' ')} format (${firstRatio}). Conflicting: ${conflicting.join(', ')}`];
+    }
+  }
+
+  return [];
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [goal, setGoal] = useState('');
@@ -16,6 +43,8 @@ export default function Home() {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
   const [actualCaptions, setActualCaptions] = useState<string[]>([]);
+  const [clientWarnings, setClientWarnings] = useState<string[]>([]);
+  const [strategizeWarnings, setStrategizeWarnings] = useState<string[]>([]);
 
   // Auto sign-in anonymously
   useEffect(() => {
@@ -110,6 +139,12 @@ export default function Home() {
     };
   }, [currentJob?.status, currentJob?.captions?.[0]]);
 
+  // Detect aspect ratio conflicts when platforms change
+  useEffect(() => {
+    const warnings = detectAspectRatioConflicts(selectedPlatforms);
+    setClientWarnings(warnings);
+  }, [selectedPlatforms]);
+
   const handleStrategize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!goal.trim() || !user || selectedPlatforms.length === 0) return;
@@ -119,6 +154,10 @@ export default function Home() {
 
     try {
       const response = await strategize(goal, selectedPlatforms);
+
+      // Store backend warnings from strategy response
+      setStrategizeWarnings(response.warnings || []);
+
       // The job will be populated via Firestore listener
       setCurrentJob({
         event_id: response.event_id,
@@ -134,6 +173,7 @@ export default function Home() {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate strategy');
+      setStrategizeWarnings([]); // Clear stale warnings on error
     } finally {
       setLoading(false);
     }
@@ -256,6 +296,28 @@ export default function Home() {
             )}
           </div>
 
+          {/* Client-side aspect ratio warnings */}
+          {clientWarnings.length > 0 && (
+            <div style={{
+              background: '#fffbeb',
+              borderLeft: '4px solid #f59e0b',
+              padding: '1rem',
+              marginBottom: '1rem',
+              borderRadius: '4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  {clientWarnings.map((warning, idx) => (
+                    <p key={idx} style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
+                      {warning}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading || !goal.trim() || selectedPlatforms.length === 0}
@@ -311,6 +373,32 @@ export default function Home() {
               </p>
             )}
 
+            {/* Backend strategy warnings */}
+            {strategizeWarnings.length > 0 && (
+              <div style={{
+                background: '#fffbeb',
+                borderLeft: '4px solid #f59e0b',
+                padding: '1rem',
+                marginTop: '1rem',
+                marginBottom: '1rem',
+                borderRadius: '4px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ color: '#92400e', display: 'block', marginBottom: '0.5rem' }}>
+                      Strategy Warnings
+                    </strong>
+                    {strategizeWarnings.map((warning, idx) => (
+                      <p key={idx} style={{ margin: '0.25rem 0', color: '#92400e', fontSize: '0.9rem' }}>
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {currentJob.status === 'pending_approval' && (
               <button
                 onClick={handleApprove}
@@ -332,6 +420,31 @@ export default function Home() {
 
             {currentJob.status === 'completed' && (
               <div style={{ marginTop: '1rem' }}>
+                {/* Job warnings from asset generation */}
+                {currentJob.warnings && currentJob.warnings.length > 0 && (
+                  <div style={{
+                    background: '#fffbeb',
+                    borderLeft: '4px solid #f59e0b',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '1.25rem', marginRight: '0.75rem' }}>⚠️</span>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: '#92400e', display: 'block', marginBottom: '0.5rem' }}>
+                          Asset Generation Warnings ({currentJob.warnings.length})
+                        </strong>
+                        {currentJob.warnings.map((warning, idx) => (
+                          <p key={idx} style={{ margin: '0.5rem 0', color: '#92400e', fontSize: '0.9rem' }}>
+                            • {warning}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <h4>Generated Assets:</h4>
 
                 {actualCaptions.length > 0 && (
