@@ -271,7 +271,7 @@ class TestGCSDownload:
         mock_genai = Mock()
 
         with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
-            with patch("app.core.config.get_settings") as mock_get_settings:
+            with patch("app.services.video.get_settings") as mock_get_settings:
                 mock_settings = Mock()
                 mock_settings.PROJECT_ID = "test-project"
                 mock_settings.LOCATION = "us-central1"
@@ -305,7 +305,7 @@ class TestGCSDownload:
         mock_genai = Mock()
 
         with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
-            with patch("app.core.config.get_settings") as mock_get_settings:
+            with patch("app.services.video.get_settings") as mock_get_settings:
                 mock_settings = Mock()
                 mock_settings.PROJECT_ID = "test-project"
                 mock_settings.LOCATION = "us-central1"
@@ -340,7 +340,7 @@ class TestGCSDownload:
         mock_genai = Mock()
 
         with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
-            with patch("app.core.config.get_settings") as mock_get_settings:
+            with patch("app.services.video.get_settings") as mock_get_settings:
                 mock_settings = Mock()
                 mock_settings.PROJECT_ID = "test-project"
                 mock_settings.LOCATION = "us-central1"
@@ -381,7 +381,7 @@ class TestGCSDownload:
         mock_genai = Mock()
 
         with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage_module}):
-            with patch("app.core.config.get_settings") as mock_get_settings:
+            with patch("app.services.video.get_settings") as mock_get_settings:
                 mock_settings = Mock()
                 mock_settings.PROJECT_ID = "test-project"
                 mock_settings.LOCATION = "us-central1"
