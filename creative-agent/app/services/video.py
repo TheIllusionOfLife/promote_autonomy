@@ -75,11 +75,11 @@ class RealVeoVideoService:
 
     def __init__(self):
         """Initialize google.genai client for Veo video generation."""
+        settings = get_settings()
+
         try:
             from google import genai
             from google.cloud import storage
-
-            settings = get_settings()
 
             # Set environment variables required by google.genai
             import os
@@ -92,7 +92,6 @@ class RealVeoVideoService:
             self.storage_client = storage.Client()
 
         except Exception as e:
-            settings = get_settings()
             raise RuntimeError(
                 f"Failed to initialize google.genai for Veo service "
                 f"(project={settings.PROJECT_ID}, location={settings.LOCATION}): {e}"
@@ -207,8 +206,8 @@ class RealVeoVideoService:
         if not gcs_uri.startswith("gs://"):
             raise ValueError(f"Invalid GCS URI format: {gcs_uri}. Must start with 'gs://'")
 
-        # Remove 'gs://' prefix
-        path = gcs_uri[5:]
+        # Remove 'gs://' prefix using modern Python 3.9+ method
+        path = gcs_uri.removeprefix("gs://")
 
         # Split into bucket and object path
         parts = path.split("/", 1)
@@ -225,7 +224,15 @@ class RealVeoVideoService:
             video_bytes = await asyncio.to_thread(blob.download_as_bytes)
             return video_bytes
         except Exception as e:
-            raise RuntimeError(f"Failed to download video from {gcs_uri}: {e}") from e
+            # Import here to avoid dependency in mock mode
+            from google.api_core import exceptions as gcp_exceptions
+
+            if isinstance(e, gcp_exceptions.NotFound):
+                raise RuntimeError(f"Video not found at {gcs_uri}. VEO may have failed to write output.") from e
+            elif isinstance(e, gcp_exceptions.Forbidden):
+                raise RuntimeError(f"Permission denied accessing {gcs_uri}. Check service account IAM roles.") from e
+            else:
+                raise RuntimeError(f"Failed to download video from {gcs_uri}: {e}") from e
 
 
 # Service instance management (singleton pattern)
@@ -237,16 +244,15 @@ def get_video_service() -> VideoService:
     """Get video service instance (singleton).
 
     Returns:
-        MockVideoService if USE_MOCK_VEO or USE_MOCK_GEMINI is True,
+        MockVideoService if USE_MOCK_VEO is True,
         otherwise RealVeoVideoService.
     """
     global _mock_video_service, _real_video_service
 
     settings = get_settings()
 
-    # Use mock if either flag is enabled
-    # RealVeoVideoService uses google.genai (Veo) directly, so respect both flags
-    if settings.USE_MOCK_VEO or settings.USE_MOCK_GEMINI:
+    # Use mock video service when flag is enabled
+    if settings.USE_MOCK_VEO:
         if _mock_video_service is None:
             _mock_video_service = MockVideoService()
         return _mock_video_service

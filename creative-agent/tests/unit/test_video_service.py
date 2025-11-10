@@ -402,7 +402,6 @@ class TestVideoServiceFactory:
 
         with patch("app.services.video.get_settings") as mock_settings:
             mock_settings.return_value.USE_MOCK_VEO = True
-            mock_settings.return_value.USE_MOCK_GEMINI = False
 
             service = get_video_service()
 
@@ -424,7 +423,6 @@ class TestVideoServiceFactory:
         with patch.dict("sys.modules", {"google.genai": mock_genai, "google.cloud.storage": mock_storage}):
             with patch("app.services.video.get_settings") as mock_settings:
                 mock_settings.return_value.USE_MOCK_VEO = False
-                mock_settings.return_value.USE_MOCK_GEMINI = False
                 mock_settings.return_value.VEO_MODEL = "veo-3.0-generate-001"
                 mock_settings.return_value.VIDEO_OUTPUT_GCS_BUCKET = "gs://test"
                 mock_settings.return_value.PROJECT_ID = "test-project"
@@ -443,7 +441,6 @@ class TestVideoServiceFactory:
 
         with patch("app.services.video.get_settings") as mock_settings:
             mock_settings.return_value.USE_MOCK_VEO = True
-            mock_settings.return_value.USE_MOCK_GEMINI = False
 
             service1 = get_video_service()
             service2 = get_video_service()
