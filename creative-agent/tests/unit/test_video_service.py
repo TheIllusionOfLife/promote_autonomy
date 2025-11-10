@@ -126,7 +126,7 @@ class TestRealVeoVideoService:
                 mock_settings.VEO_MODEL = "veo-3.0-generate-001"
                 mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
                 mock_settings.VEO_TIMEOUT_SEC = 360
-                mock_settings.VEO_POLLING_INTERVAL_SEC = 15
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 0.001  # Fast polling for tests
                 mock_get_settings.return_value = mock_settings
 
                 service = RealVeoVideoService()
@@ -230,7 +230,7 @@ class TestRealVeoVideoService:
                 mock_settings.VEO_MODEL = "veo-3.0-generate-001"
                 mock_settings.VIDEO_OUTPUT_GCS_BUCKET = "gs://test-bucket/veo-output"
                 mock_settings.VEO_TIMEOUT_SEC = 360
-                mock_settings.VEO_POLLING_INTERVAL_SEC = 15
+                mock_settings.VEO_POLLING_INTERVAL_SEC = 0.001  # Fast polling for tests
                 mock_get_settings.return_value = mock_settings
 
                 service = RealVeoVideoService()
