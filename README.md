@@ -1,10 +1,23 @@
 # Promote Autonomy
 
-AI-powered marketing automation system with Human-in-the-Loop (HITL) approval for the Cloud Run Hackathon (AI Agents Track).
+> **🏆 Cloud Run Hackathon 2024 - AI Agents Category**
+>
+> Multi-agent marketing automation system built with **Google Agent Development Kit (ADK)** and deployed on **Cloud Run**.
+>
+> **[🚀 Try Live Demo](https://frontend-909635873035.asia-northeast1.run.app)** | **[📊 Architecture Diagram](./architecture-diagram.svg)** | **[📖 Full Documentation](./ARCHITECTURE.md)**
 
 ## Overview
 
-Promote Autonomy is a multi-agent system that generates marketing strategies and assets using AI, requiring explicit human approval before execution. Built with three independent Cloud Run services communicating via Pub/Sub and sharing state through Firestore.
+Promote Autonomy is a **multi-agent AI system** that generates marketing strategies and assets using Google's Agent Development Kit (ADK), requiring explicit human approval before execution.
+
+**Key Innovation**: Combines ADK's multi-agent orchestration with Human-in-the-Loop (HITL) approval workflow, deployed as three independent Cloud Run services communicating via Pub/Sub.
+
+### AI Agents Category Requirements
+- ✅ **Google ADK Integration**: Creative Agent uses ADK coordinator with 3 specialized sub-agents
+- ✅ **Multi-Agent Communication**: Strategy Agent → Pub/Sub → Creative Agent (ADK orchestrator)
+- ✅ **Cloud Run Deployment**: 3 independent services (Frontend, Strategy Agent, Creative Agent)
+- ✅ **Multiple Google AI Models**: Gemini 2.5 Flash, Imagen 4.0, Veo 3.0
+- ✅ **Production-Ready**: 83 passing tests, full CI/CD, security hardening
 
 ## Architecture
 
@@ -26,7 +39,11 @@ Promote Autonomy is a multi-agent system that generates marketing strategies and
 
 **Frontend**: Client-side Firebase app with read-only Firestore access
 **Strategy Agent**: Generates task lists via Gemini, handles approval workflow
-**Creative Agent**: Pub/Sub consumer generating assets (copy, images, videos)
+**Creative Agent**: Pub/Sub consumer generating assets (copy, images, videos) with **Google ADK multi-agent orchestration**
+
+> 📊 **[View Full Architecture Diagram](./architecture-diagram.svg)** | **[Detailed Documentation](./ARCHITECTURE.md)**
+>
+> The architecture diagram shows the complete multi-agent system including ADK coordinator with 3 specialized sub-agents, data flow, and HITL workflow.
 
 ### HITL Workflow
 
