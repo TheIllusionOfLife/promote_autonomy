@@ -1,4 +1,16 @@
 steps:
+  # Validate required environment variables and substitutions
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Validating required variables..."
+        test -n "$PROJECT_ID" || (echo "ERROR: PROJECT_ID is required" && exit 1)
+        test -n "$_DEPLOY_REGION" || (echo "ERROR: _DEPLOY_REGION is required" && exit 1)
+        test -n "$_SERVICE_NAME" || (echo "ERROR: _SERVICE_NAME is required" && exit 1)
+        echo "✓ All required variables present"
+
   # Build the container image from project root
   - name: 'gcr.io/cloud-builders/docker'
     args:
@@ -43,7 +55,7 @@ steps:
       - '--memory'
       - '2Gi'
       - '--timeout'
-      - '3600'
+      - '900'  # 15 min: VEO generation (6 min) + overhead + multi-asset tasks
       - '--max-instances'
       - '10'
 
