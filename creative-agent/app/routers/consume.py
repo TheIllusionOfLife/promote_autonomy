@@ -179,6 +179,7 @@ async def consume_task(
             video_bytes = await video_service.generate_video(task_list.video)
 
             # Check if video exceeds size limit and store warning
+            # Warning storage is non-critical - if it fails, we still return the video
             if task_list.video.max_file_size_mb:
                 size_mb = len(video_bytes) / (1024 * 1024)
                 if size_mb > task_list.video.max_file_size_mb:
@@ -187,8 +188,12 @@ async def consume_task(
                         f"platform limit ({task_list.video.max_file_size_mb} MB). "
                         f"This video may not upload successfully to the target platform."
                     )
-                    await firestore_service.add_job_warning(event_id, warning_msg)
-                    logger.warning(f"Stored warning for job {event_id}: {warning_msg}")
+                    try:
+                        await firestore_service.add_job_warning(event_id, warning_msg)
+                        logger.warning(f"Stored warning for job {event_id}: {warning_msg}")
+                    except Exception as e:
+                        # Log but don't fail job if warning storage fails
+                        logger.error(f"Failed to store warning for job {event_id}: {e}")
 
             url = await storage_service.upload_file(
                 event_id=event_id,
