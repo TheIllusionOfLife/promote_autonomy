@@ -24,15 +24,80 @@ settings = get_settings()
 class GeminiService(Protocol):
     """Protocol for Gemini service implementations."""
 
-    async def generate_task_list(self, goal: str, target_platforms: list[Platform]) -> TaskList:
-        """Generate a task list from a marketing goal."""
+    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+        """Analyze a reference product image for marketing purposes.
+
+        Args:
+            image_url: Public URL to the reference image
+            goal: Marketing goal for context
+
+        Returns:
+            Detailed text analysis of the product image
+        """
+        ...
+
+    async def generate_task_list(
+        self,
+        goal: str,
+        target_platforms: list[Platform],
+        reference_analysis: str | None = None
+    ) -> TaskList:
+        """Generate a task list from a marketing goal.
+
+        Args:
+            goal: Marketing goal
+            target_platforms: Target social media platforms
+            reference_analysis: Optional analysis of reference product image
+
+        Returns:
+            Generated task list
+        """
         ...
 
 
 class MockGeminiService:
     """Mock implementation for development without real API."""
 
-    async def generate_task_list(self, goal: str, target_platforms: list[Platform]) -> TaskList:
+    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+        """Generate mock analysis of reference image."""
+        logger.info(f"[MOCK] Analyzing reference image: {image_url} for goal: {goal}")
+
+        # Generate mock analysis based on goal keywords
+        goal_lower = goal.lower()
+
+        # Detect product type from goal
+        product_type = "product"
+        if any(word in goal_lower for word in ["shoe", "sneaker", "footwear"]):
+            product_type = "shoes"
+        elif any(word in goal_lower for word in ["laptop", "computer", "tech"]):
+            product_type = "laptop"
+        elif any(word in goal_lower for word in ["bottle", "water", "drink"]):
+            product_type = "water bottle"
+        elif any(word in goal_lower for word in ["coffee", "beans", "beverage"]):
+            product_type = "coffee"
+
+        # Generate detailed mock analysis
+        analysis = f"""Mock Product Image Analysis for {goal}:
+
+Product Type: {product_type.title()}
+Brand Elements: Professional photography with clean composition, modern aesthetic
+Colors: Vibrant and eye-catching color palette suitable for social media
+Composition: Well-lit product shot with attention to detail
+Mood: Contemporary and appealing, conveys quality and desirability
+Key Features: High-quality product presentation, suitable for promotional use
+Visual Style: Clean, professional product photography with marketing appeal
+
+This analysis is generated in mock mode for development purposes."""
+
+        logger.info(f"[MOCK] Generated analysis: {analysis[:100]}...")
+        return analysis
+
+    async def generate_task_list(
+        self,
+        goal: str,
+        target_platforms: list[Platform],
+        reference_analysis: str | None = None
+    ) -> TaskList:
         """Generate a mock task list based on the goal and target platforms."""
         logger.info(f"[MOCK] Generating task list for goal: {goal}, platforms: {target_platforms}")
 
@@ -63,6 +128,22 @@ class MockGeminiService:
             for word in ["video", "demo", "tutorial", "campaign"]
         )
 
+        # Incorporate reference analysis into prompts if available
+        image_prompt_base = f"Modern promotional visual for: {goal[:50]}"
+        if reference_analysis:
+            # Extract key visual elements from analysis
+            analysis_lower = reference_analysis.lower()
+            keywords = []
+            if "eco" in analysis_lower or "green" in analysis_lower:
+                keywords.append("eco-friendly")
+            if "nature" in analysis_lower or "outdoor" in analysis_lower:
+                keywords.append("nature")
+            if "bottle" in analysis_lower:
+                keywords.append("bottle")
+
+            if keywords:
+                image_prompt_base = f"Product visual incorporating {', '.join(keywords)}: {goal[:40]}"
+
         task_list = TaskList(
             goal=goal,
             target_platforms=target_platforms,
@@ -71,12 +152,12 @@ class MockGeminiService:
                 style="twitter" if has_social else "engaging",
             ),
             image=ImageTaskConfig(
-                prompt=f"Modern promotional visual for: {goal[:50]}",
+                prompt=image_prompt_base,
                 size=image_size,
                 aspect_ratio=image_aspect_ratio,
                 max_file_size_mb=min_image_size_mb,
             )
-            if has_image or len(goal) > 30
+            if has_image or len(goal) > 30 or reference_analysis
             else None,
             video=VideoTaskConfig(
                 prompt=f"Promotional video for: {goal[:50]}",
@@ -111,7 +192,61 @@ class RealGeminiService:
             logger.error(f"Failed to initialize Gemini: {e}")
             raise
 
-    async def generate_task_list(self, goal: str, target_platforms: list[Platform]) -> TaskList:
+    async def analyze_reference_image(self, image_url: str, goal: str) -> str:
+        """Analyze reference product image using Gemini vision capabilities.
+
+        Args:
+            image_url: Public URL to the reference image
+            goal: Marketing goal for context
+
+        Returns:
+            Detailed text analysis of the product image
+        """
+        from vertexai.generative_models import Part
+
+        prompt = f"""Analyze this product image in detail for marketing purposes. The marketing goal is: {goal}
+
+Please provide a comprehensive analysis including:
+
+1. **Product Type**: What product is shown in the image?
+2. **Brand Elements**: Any visible logos, branding, or brand identity elements
+3. **Colors**: Dominant colors and color palette
+4. **Composition**: How the product is presented (background, lighting, angle)
+5. **Mood**: The emotional tone or feeling the image conveys
+6. **Key Features**: Notable product features visible in the image
+7. **Visual Style**: Photography style, aesthetic, overall visual approach
+
+Provide this analysis in a detailed, structured format (200-400 words) that can inform the creation of marketing captions and visual assets."""
+
+        try:
+            # Create image part from URL
+            image_part = Part.from_uri(image_url, mime_type="image/jpeg")
+
+            # Generate analysis with timeout
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.model.generate_content,
+                    [image_part, prompt]
+                ),
+                timeout=settings.GEMINI_TIMEOUT_SEC
+            )
+
+            analysis = response.text.strip()
+            logger.info(f"Generated image analysis: {analysis[:100]}...")
+            return analysis
+
+        except Exception as e:
+            logger.error(f"Gemini vision API error: {e}")
+            # Fallback to basic analysis
+            logger.warning("Falling back to basic image analysis")
+            return f"Reference product image provided for marketing goal: {goal}. Image available at {image_url}. Please use this as context for creating visually consistent marketing materials."
+
+    async def generate_task_list(
+        self,
+        goal: str,
+        target_platforms: list[Platform],
+        reference_analysis: str | None = None
+    ) -> TaskList:
         """Generate a task list using Gemini API."""
         # Calculate platform constraints
         specs = [PLATFORM_SPECS[p] for p in target_platforms]
@@ -131,10 +266,20 @@ class RealGeminiService:
 
         platform_names = ", ".join([p.value for p in target_platforms])
 
+        # Build prompt with optional reference analysis
+        reference_context = ""
+        if reference_analysis:
+            reference_context = f"""
+
+Reference Product Image Analysis:
+{reference_analysis}
+
+IMPORTANT: Use this product image analysis to inform your captions and visual asset prompts. Ensure generated content is consistent with the product's visual identity, colors, and brand elements described above."""
+
         prompt = f"""You are a marketing strategist AI. Given a marketing goal and target platforms, generate a structured task list.
 
 Marketing Goal: {goal}
-Target Platforms: {platform_names}
+Target Platforms: {platform_names}{reference_context}
 
 Platform Constraints:
 - Image: {image_size} ({image_aspect_ratio}), max {min_image_size_mb}MB
