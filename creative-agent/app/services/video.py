@@ -93,6 +93,11 @@ class RealVeoVideoService:
         "technical": "precise, detailed style",
     }
 
+    # HSV color classification thresholds
+    SATURATION_ACHROMATIC_THRESHOLD = 0.15  # Below this is grayscale
+    VALUE_BLACK_THRESHOLD = 0.2  # Below this is black
+    VALUE_WHITE_THRESHOLD = 0.8  # Above this is white
+
     @staticmethod
     def _hex_to_color_name(hex_code: str) -> str:
         """Convert hex code to approximate color name using HSV color model.
@@ -102,11 +107,28 @@ class RealVeoVideoService:
 
         Returns:
             Approximate color name (e.g., 'purple', 'red', 'blue')
+
+        Raises:
+            ValueError: If hex_code is invalid (wrong length or non-hex characters)
         """
-        # Convert hex to RGB (0-1 range)
-        r = int(hex_code[0:2], 16) / 255.0
-        g = int(hex_code[2:4], 16) / 255.0
-        b = int(hex_code[4:6], 16) / 255.0
+        # Strip leading '#' if present and validate
+        hex_code = hex_code.lstrip('#')
+
+        if len(hex_code) != 6:
+            raise ValueError(
+                f"Invalid hex code length: {len(hex_code)}. Expected 6 characters (e.g., 'FF0000')."
+            )
+
+        # Validate hex characters and convert to RGB (0-1 range)
+        try:
+            r = int(hex_code[0:2], 16) / 255.0
+            g = int(hex_code[2:4], 16) / 255.0
+            b = int(hex_code[4:6], 16) / 255.0
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid hex code '{hex_code}': contains non-hexadecimal characters. "
+                f"Expected format: 6 hex digits (0-9, A-F)."
+            ) from e
 
         # Convert RGB to HSV
         max_val = max(r, g, b)
@@ -131,10 +153,10 @@ class RealVeoVideoService:
 
         # Classify color based on HSV values
         # Check for achromatic colors (low saturation)
-        if s < 0.15:
-            if v < 0.2:
+        if s < RealVeoVideoService.SATURATION_ACHROMATIC_THRESHOLD:
+            if v < RealVeoVideoService.VALUE_BLACK_THRESHOLD:
                 return "black"
-            elif v > 0.8:
+            elif v > RealVeoVideoService.VALUE_WHITE_THRESHOLD:
                 return "white"
             else:
                 return "gray"

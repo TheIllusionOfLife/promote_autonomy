@@ -541,3 +541,31 @@ class TestHexToColorName:
         assert RealVeoVideoService._hex_to_color_name("ff0000") == "red"
         assert RealVeoVideoService._hex_to_color_name("00ff00") == "green"
         assert RealVeoVideoService._hex_to_color_name("0000ff") == "blue"
+
+    def test_hex_code_with_hash_prefix(self):
+        """Test that hex codes with '#' prefix are handled correctly."""
+        from app.services.video import RealVeoVideoService
+
+        # Leading '#' should be stripped automatically
+        assert RealVeoVideoService._hex_to_color_name("#FF0000") == "red"
+        assert RealVeoVideoService._hex_to_color_name("#4D18C9") == "purple"
+
+    def test_invalid_hex_code_length(self):
+        """Test that invalid hex code lengths raise ValueError."""
+        from app.services.video import RealVeoVideoService
+
+        with pytest.raises(ValueError, match="Invalid hex code length"):
+            RealVeoVideoService._hex_to_color_name("FFF")  # Too short
+
+        with pytest.raises(ValueError, match="Invalid hex code length"):
+            RealVeoVideoService._hex_to_color_name("FF00FF00")  # Too long
+
+    def test_invalid_hex_characters(self):
+        """Test that non-hex characters raise ValueError."""
+        from app.services.video import RealVeoVideoService
+
+        with pytest.raises(ValueError, match="contains non-hexadecimal characters"):
+            RealVeoVideoService._hex_to_color_name("GGGGGG")
+
+        with pytest.raises(ValueError, match="contains non-hexadecimal characters"):
+            RealVeoVideoService._hex_to_color_name("ZZZZZZ")
