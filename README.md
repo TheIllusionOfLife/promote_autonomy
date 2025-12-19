@@ -353,16 +353,105 @@ firebase deploy --only firestore:rules
 
 ## Project Status
 
-**Live Demo**: [https://frontend-909635873035.asia-northeast1.run.app/](https://frontend-909635873035.asia-northeast1.run.app/)
+> **⚠️ Infrastructure Suspended (2025-12-19)**
+>
+> Cloud infrastructure has been shut down to reduce costs. The demo URL is no longer active.
+> See [Infrastructure Suspension](#infrastructure-suspension-2025-12-19) section below for details on how to redeploy.
+
+**Live Demo**: ~~https://frontend-909635873035.asia-northeast1.run.app/~~ (suspended)
 
 **Current Status**:
 - ✅ **Code**: 100% complete (83/83 tests passing)
-- ✅ **Deployment**: Fully deployed to Cloud Run (all 3 services live)
+- ⏸️ **Deployment**: Infrastructure suspended (can be redeployed)
 - ✅ **Platform Support**: Multi-platform asset generation (Instagram, Twitter, Facebook, LinkedIn, YouTube)
-- ✅ **End-to-End Testing**: Verified working in production
-- ✅ **Hackathon Ready**: Public demo URL available
+- ✅ **End-to-End Testing**: Previously verified working in production
+- ✅ **Hackathon Ready**: Code complete, deployment docs available
 
 **Documentation**:
 - **Deployment Info**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for service URLs, health checks, and production verification
 - **Future Features**: See [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) for planned enhancements
 - **Historical Docs**: Archived planning documents in [docs/archive/](docs/archive/)
+
+## Infrastructure Suspension (2025-12-19)
+
+### Why Suspended?
+
+The GCP infrastructure was shut down to eliminate ongoing costs. November 2025 billing showed:
+- **Vertex AI**: ¥6,027 (image/video generation when users trigger the system)
+- **Artifact Registry**: ¥55 (Docker image storage)
+- **Cloud Run**: ¥16 (service hosting)
+- **Cloud Storage**: ¥7 (asset storage)
+
+To prevent unauthorized usage costs and storage fees, all resources were deleted.
+
+### What Was Deleted
+
+**Cloud Run Services** (4 services):
+```bash
+# Commands executed:
+gcloud run services delete frontend --region=asia-northeast1 --quiet
+gcloud run services delete strategy-agent --region=asia-northeast1 --quiet
+gcloud run services delete creative-agent --region=asia-northeast1 --quiet
+gcloud run services delete creative-agent --region=us-central1 --quiet
+```
+
+**Artifact Registry** (4 repositories, ~6GB Docker images):
+```bash
+gcloud artifacts repositories delete cloud-run-source-deploy --location=asia-northeast1 --quiet
+gcloud artifacts repositories delete asia.gcr.io --location=asia --quiet
+gcloud artifacts repositories delete us.gcr.io --location=us --quiet
+gcloud artifacts repositories delete cloud-run-source-deploy --location=us-central1 --quiet
+```
+
+**Cloud Storage** (5 buckets, ~2.6GB):
+```bash
+gsutil -m rm -r gs://promote-autonomy-assets/
+gsutil -m rm -r gs://promote-autonomy-veo-output/
+gsutil -m rm -r gs://promote-autonomy_cloudbuild/
+gsutil -m rm -r gs://run-sources-promote-autonomy-asia-northeast1/
+gsutil -m rm -r gs://run-sources-promote-autonomy-us-central1/
+```
+
+### How to Redeploy
+
+1. **Deploy Cloud Run services** (see [Deployment](#deploy-to-cloud-run) section):
+   ```bash
+   # Strategy Agent
+   gcloud run deploy strategy-agent \
+     --source=./strategy-agent \
+     --region=asia-northeast1 \
+     --service-account=strategy-sa@PROJECT_ID.iam.gserviceaccount.com \
+     --set-env-vars=PROJECT_ID=promote-autonomy,PUBSUB_TOPIC=autonomy-tasks
+
+   # Creative Agent
+   gcloud run deploy creative-agent \
+     --source=./creative-agent \
+     --region=asia-northeast1 \
+     --service-account=creative-sa@PROJECT_ID.iam.gserviceaccount.com \
+     --set-env-vars=PROJECT_ID=promote-autonomy,STORAGE_BUCKET=promote-autonomy-assets \
+     --no-allow-unauthenticated
+
+   # Frontend
+   gcloud run deploy frontend \
+     --source=./frontend \
+     --region=asia-northeast1 \
+     --allow-unauthenticated
+   ```
+
+2. **Create Cloud Storage buckets**:
+   ```bash
+   gsutil mb -l asia-northeast1 gs://promote-autonomy-assets/
+   gsutil mb -l asia-northeast1 gs://promote-autonomy-veo-output/
+   ```
+
+3. **Configure Pub/Sub** (if subscription was deleted):
+   ```bash
+   gcloud pubsub subscriptions create creative-agent-sub \
+     --topic=autonomy-tasks \
+     --push-endpoint=https://creative-agent-URL/api/consume \
+     --push-auth-service-account=invoker@PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+4. **Update Frontend environment** with new service URLs in Cloud Run console or redeploy.
+
+**Note**: Artifact Registry repositories and Cloud Build artifacts are automatically recreated when deploying with `--source`.
